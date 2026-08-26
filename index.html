@@ -132,73 +132,8 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 </head>
 <body>
 
-<!-- LOGIN SCREEN -->
-<div id="loginOverlay" style="position:fixed;inset:0;background:var(--bg);z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:20px">
-  <div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--gold);letter-spacing:5px">AIR 1</div>
-  <div style="font-family:var(--mono);font-size:10px;color:var(--t3);text-align:center">UPSC Command Center &middot; Syncs across all your devices</div>
-  <div id="loginBox" style="background:var(--bg3);border:1px solid var(--gb);border-radius:8px;padding:28px 32px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:14px;align-items:center">
-    <div style="font-family:var(--mono);font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px">Sign in to sync your data</div>
-    <button id="googleSignInBtn" onclick="signInWithGoogle()" style="display:flex;align-items:center;gap:10px;background:#fff;border:none;border-radius:5px;padding:10px 20px;cursor:pointer;font-family:var(--sans);font-size:13px;font-weight:500;color:#3c4043;width:100%;justify-content:center">
-      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
-      Continue with Google
-    </button>
-    <div style="font-family:var(--mono);font-size:8px;color:var(--t3);text-align:center;line-height:1.7">Your data lives in your Google account.<br>Laptop, mobile, tablet &mdash; all synced automatically.</div>
-    <div id="loginErr" style="font-family:var(--mono);font-size:9px;color:var(--red);display:none;text-align:center;padding:6px 10px;background:var(--rbg);border-radius:4px;width:100%"></div>
-  </div>
-  <div style="font-family:var(--mono);font-size:9px;color:var(--t3);text-align:center;line-height:1.8">
-    First time? <a href="#" id="setupLink" style="color:var(--gold2)">See 2-minute Firebase setup guide &rarr;</a>
-  </div>
-</div>
-
-<!-- SETUP GUIDE MODAL -->
-<div id="setupGuide" style="position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;display:none;align-items:center;justify-content:center;padding:16px">
-  <div style="background:var(--bg3);border:1px solid var(--gb);border-radius:8px;padding:24px;max-width:540px;width:100%;max-height:92vh;overflow-y:auto">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--gold2)">Firebase Setup (free, 2 minutes)</div>
-      <button onclick="document.getElementById('setupGuide').style.display='none'" style="background:none;border:none;color:var(--t2);font-size:20px;cursor:pointer;line-height:1">&times;</button>
-    </div>
-    <div style="font-family:var(--mono);font-size:9px;color:var(--t2);line-height:2.1">
-      <div style="color:var(--gold);margin-bottom:2px;font-weight:600">STEP 1 &mdash; Create Firebase project</div>
-      <div>1. Open <a href="https://console.firebase.google.com" target="_blank" style="color:var(--blue)">console.firebase.google.com</a> (sign in with Google)</div>
-      <div>2. Click <b style="color:var(--text)">"Add project"</b> &rarr; name it <b style="color:var(--gold2)">air1-tracker</b> &rarr; Continue</div>
-      <div>3. Turn off Google Analytics &rarr; <b style="color:var(--text)">"Create project"</b></div>
-      <br>
-      <div style="color:var(--gold);margin-bottom:2px;font-weight:600">STEP 2 &mdash; Enable Google sign-in</div>
-      <div>4. Left menu &rarr; <b style="color:var(--text)">Authentication</b> &rarr; Get started</div>
-      <div>5. Sign-in method tab &rarr; <b style="color:var(--text)">Google</b> &rarr; Enable toggle &rarr; Save</div>
-      <br>
-      <div style="color:var(--gold);margin-bottom:2px;font-weight:600">STEP 3 &mdash; Create Firestore database</div>
-      <div>6. Left menu &rarr; <b style="color:var(--text)">Firestore Database</b> &rarr; Create database</div>
-      <div>7. Select <b style="color:var(--text)">"Start in test mode"</b> &rarr; Next &rarr; Enable</div>
-      <br>
-      <div style="color:var(--gold);margin-bottom:2px;font-weight:600">STEP 4 &mdash; Get your config</div>
-      <div>8. Click the gear &oplus; icon (top left) &rarr; Project settings</div>
-      <div>9. Scroll to <b style="color:var(--text)">"Your apps"</b> &rarr; click <b style="color:var(--text)">&lt;/&gt; Web</b> &rarr; give any name &rarr; Register app</div>
-      <div>10. You will see a <b style="color:var(--gold2)">firebaseConfig</b> block &mdash; copy the whole thing</div>
-      <br>
-      <div style="color:var(--gold);margin-bottom:6px;font-weight:600">STEP 5 &mdash; Paste config here</div>
-      <textarea id="configInput" placeholder="Paste your firebaseConfig object here, e.g.:
-{
-  apiKey: &quot;AIzaSyXXXX...&quot;,
-  authDomain: &quot;air1-tracker.firebaseapp.com&quot;,
-  projectId: &quot;air1-tracker&quot;,
-  storageBucket: &quot;air1-tracker.appspot.com&quot;,
-  messagingSenderId: &quot;123456789&quot;,
-  appId: &quot;1:123:web:abc&quot;
-}" style="width:100%;height:140px;background:var(--bg4);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:9px;padding:8px;resize:vertical;outline:none;margin-bottom:8px"></textarea>
-      <button onclick="applyFirebaseConfig()" style="background:var(--gdim);border:1px solid var(--gb);border-radius:4px;color:var(--gold2);cursor:pointer;font-family:var(--mono);font-size:10px;font-weight:700;padding:9px 16px;width:100%;letter-spacing:.5px">CONNECT &amp; SIGN IN WITH GOOGLE</button>
-      <div id="configErr" style="font-family:var(--mono);font-size:9px;color:var(--red);margin-top:8px;display:none;background:var(--rbg);padding:6px 10px;border-radius:4px"></div>
-      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);color:var(--t3);font-size:8px;line-height:1.8">
-        &bull; Free tier is 1GB storage + 50,000 reads/day &mdash; more than enough<br>
-        &bull; Your data is private to your Google account<br>
-        &bull; You only do this setup once; same config works on all devices
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Loading overlay -->
-<div id="loadOverlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9997;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+<!-- Loading overlay shown until data is loaded from persistent storage -->
+<div id="loadOverlay">
   <div class="logo2">AIR 1</div>
   <div class="spin"></div>
   <div class="lmsg" id="loadMsg">Loading your data...</div>
@@ -211,14 +146,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div class="sbadge" id="hStreak">0 day streak</div>
     <div class="syncing" id="syncBadge">saving...</div>
   </div>
-  <div style="display:flex;align-items:center;gap:10px">
-    <div class="hdr-date" id="hDate"></div>
-    <div id="userInfo" style="display:flex;align-items:center;gap:6px;display:none">
-      <img id="userAvatar" src="" style="width:22px;height:22px;border-radius:50%;border:1.5px solid var(--gb)" onerror="this.style.display='none'">
-      <span id="userName" style="font-family:var(--mono);font-size:9px;color:var(--t3)"></span>
-      <button onclick="signOut()" style="background:none;border:1px solid var(--border);border-radius:3px;color:var(--t3);font-family:var(--mono);font-size:8px;padding:2px 6px;cursor:pointer">sign out</button>
-    </div>
-  </div>
+  <div class="hdr-date" id="hDate"></div>
 </div>
 <div class="nav">
   <button class="nb on" onclick="showTab('dash',this)">Dashboard</button>
@@ -229,6 +157,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
   <button class="nb" onclick="showTab('mocks',this)">Mock Scores</button>
   <button class="nb" onclick="showTab('errors',this)">Error Log</button>
   <button class="nb" onclick="showTab('plan',this)">My Plan</button>
+  <button class="nb" onclick="showTab('docs',this)">Documents</button>
   <button class="nb" onclick="showTab('hist',this)">History</button>
 </div>
 <div class="main">
@@ -271,11 +200,6 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
             <input type="date" id="cdDate" onchange="saveCD()" style="font-size:10px;padding:4px 7px;flex:1;min-width:120px">
           </div>
           <div id="cdLabel" style="font-family:var(--mono);font-size:8px;color:var(--t3);margin-top:4px"></div>
-          <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <div style="font-family:var(--mono);font-size:8px;color:var(--t3);white-space:nowrap">Journey start:</div>
-            <input type="date" id="jsDate" onchange="saveJS()" value="2026-06-01" style="font-size:10px;padding:3px 6px;flex:1;min-width:120px;border-color:rgba(201,168,76,.2)">
-            <div style="font-family:var(--mono);font-size:8px;color:var(--t3)">— heatmap counts missed days from this date</div>
-          </div>
         </div>
       </div>
     </div>
@@ -300,7 +224,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div id="hmStats" style="display:flex;gap:14px;margin-top:8px;flex-wrap:wrap"></div>
   </div>
   <div class="card"><div class="ctitle">Recent Entries</div>
-    <table class="tbl"><thead><tr><th>Date</th><th>Subjects</th><th>Hrs</th><th>Ans</th><th>Score</th><th>Essays</th><th>Cases</th><th>Notes</th><th></th></tr></thead>
+    <table class="tbl"><thead><tr><th>Date</th><th>Subjects</th><th>Hrs</th><th>Ans</th><th>Score</th><th>Essays</th><th>Cases</th><th>Notes</th></tr></thead>
     <tbody id="recentTb"></tbody></table>
   </div>
 </div>
@@ -361,10 +285,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 <div class="sec" id="tab-log">
   <div class="g2">
     <div class="card">
-      <div class="ctitle" id="lgCardTitle" style="display:flex;align-items:center;justify-content:space-between">
-        <span id="lgCardLabel">Add Study Entry</span>
-        <span id="lgEditBanner" style="display:none;background:rgba(74,144,217,.12);border:1px solid var(--bbd);border-radius:3px;padding:2px 8px;font-family:var(--mono);font-size:9px;color:var(--blue)">✏ EDIT MODE</span>
-      </div>
+      <div class="ctitle">Add Study Entry</div>
       <div class="frow">
         <div class="fg" style="flex:0 0 120px"><label>Date</label><input type="date" id="lgDate"></div>
         <div class="fg" style="flex:0 0 100px"><label>Phase</label>
@@ -387,15 +308,13 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
       </div>
       <div class="frow">
         <div class="fg" style="flex:0 0 80px"><label>Answers</label><input type="number" id="lgAns" min="0" max="20" value="1"></div>
-        <div class="fg" style="flex:0 0 75px"><label>Score/10</label><input type="number" id="lgScore" min="0" max="10" step="0.5" placeholder="7"></div>
+        <div class="fg" style="flex:0 0 65px"><label>Score</label><input type="number" id="lgScore" min="0" step="0.5" placeholder="7"></div>
+        <div class="fg" style="flex:0 0 65px"><label>Out of</label><input type="number" id="lgScoreOf" min="1" step="0.5" value="10"></div>
         <div class="fg" style="flex:0 0 75px"><label>Essays</label><input type="number" id="lgEss" min="0" max="5" value="0"></div>
         <div class="fg" style="flex:0 0 80px"><label>Cases</label><input type="number" id="lgCas" min="0" max="10" value="0"></div>
         <div class="fg"><label>Notes</label><input type="text" id="lgNotes" placeholder="Topics, wins..."></div>
       </div>
-      <div class="frow" style="margin-bottom:0">
-        <button class="btn" id="lgSaveBtn" onclick="saveLog()">+ Save Entry</button>
-        <button class="btn btn-ghost" id="lgCancelBtn" onclick="cancelEdit()" style="display:none">Cancel Edit</button>
-      </div>
+      <div class="frow" style="margin-bottom:0"><button class="btn" onclick="saveLog()">+ Save Entry</button></div>
     </div>
     <div class="card"><div class="ctitle">This Week</div><div id="weekSum"></div></div>
   </div>
@@ -408,7 +327,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div class="ctitle">Log Loop Completion</div>
     <div class="frow">
       <div class="fg" style="flex:0 0 115px"><label>Subject</label><select id="loopSubj"><option>GS1</option><option>GS2</option><option>GS3</option><option>GS4</option><option>Anthropology</option></select></div>
-      <div class="fg" style="flex:0 0 90px"><label>Loop No.</label><input type="number" id="loopN" min="1" max="5" value="1"></div>
+      <div class="fg" style="flex:0 0 90px"><label>Loop No.</label><input type="number" id="loopN" min="1" value="1"></div>
       <div class="fg" style="flex:0 0 115px"><label>Date</label><input type="date" id="loopDate"></div>
       <div class="fg" style="flex:0 0 90px"><label>Sim Score</label><input type="number" id="loopSc" placeholder="85" min="0" max="250"></div>
       <div class="fg" style="flex:0 0 auto;justify-content:flex-end"><label>&nbsp;</label><button class="btn" onclick="saveLoop()">Log</button></div>
@@ -433,7 +352,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
   </div>
   <div class="card"><div class="ctitle">Phase Timeline</div><div class="tl" id="phaseTl"></div></div>
   <div class="card">
-    <div class="ctitle">Loop Targets Per Subject</div>
+    <div class="ctitle">Loop Targets Per Subject <button class="btn btn-sm" onclick="addLoopSubject()">+ Add Subject</button></div>
     <div id="ltGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px"></div>
   </div>
   <div class="card">
@@ -533,6 +452,35 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
   </div>
 </div>
 
+<!-- DOCUMENTS -->
+<div class="sec" id="tab-docs">
+  <div class="card" style="border-color:var(--gb)">
+    <div class="ctitle">Backup &amp; Sync (phone ↔ laptop)</div>
+    <div style="font-family:var(--mono);font-size:9.5px;color:var(--t2);line-height:1.7;margin-bottom:10px">
+      Your data now saves permanently on <b style="color:var(--gold2)">this device/browser</b> and survives closing, refreshing, and reopening. It does <b style="color:var(--red)">not</b> automatically travel to your other device — browsers don't share storage, and git only syncs the HTML file itself, not what's saved inside the browser.<br><br>
+      To move your data between phone and laptop: tap <b style="color:var(--gold2)">Export Backup</b> here, save that .json file into the same git folder as this HTML file, commit/push it, then on the other device pull it and use <b style="color:var(--gold2)">Import Backup</b> to load it in.
+    </div>
+    <div class="frow" style="margin-bottom:0">
+      <button class="btn btn-g" onclick="exportBackup()">⬇ Export Backup (.json)</button>
+      <label class="btn" style="cursor:pointer">⬆ Import Backup (.json)<input type="file" accept="application/json" id="importFile" style="display:none" onchange="importBackup(this.files[0])"></label>
+      <span style="font-family:var(--mono);font-size:8px;color:var(--t3);align-self:center;margin-left:6px">Import <u>replaces</u> current data on this device — export first if unsure.</span>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ctitle">Attach PDFs (syllabus, notes, PYQs) <span class="ctv" id="pdfCount"></span></div>
+    <div class="frow">
+      <div class="fg"><label>Choose PDF</label><input type="file" accept="application/pdf" id="pdfFile"></div>
+      <div class="fg" style="flex:0 0 auto;justify-content:flex-end"><label>&nbsp;</label><button class="btn" onclick="addPdf()">+ Attach PDF</button></div>
+    </div>
+    <div style="font-family:var(--mono);font-size:8px;color:var(--t3);margin-bottom:8px">Stored locally on this device. Large PDFs (50MB+) may be slow — prefer smaller files.</div>
+    <div id="pdfList"></div>
+  </div>
+  <div class="card" id="pdfViewerCard" style="display:none">
+    <div class="ctitle">Viewing: <span id="pdfViewTitle" style="color:var(--gold2)"></span> <span class="ctv" style="cursor:pointer" onclick="closePdfView()">✕ close</span></div>
+    <iframe id="pdfFrame" style="width:100%;height:70vh;border:1px solid var(--border);border-radius:4px;background:#fff"></iframe>
+  </div>
+</div>
+
 <!-- HISTORY -->
 <div class="sec" id="tab-hist">
   <div class="card">
@@ -557,13 +505,11 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 // ============================================================
 var KL='upsc_logs', KLL='upsc_ll', KM='upsc_mocks', KC='upsc_chk', KP='upsc_ph',
     KLC='upsc_lc', KSP='upsc_sp', KE='upsc_errs', KPN='upsc_plan', KCD='upsc_cd',
-    KPH='upsc_ph2', KLT='upsc_lt2', KCK='upsc_ck2', KJS='upsc_js';
+    KPH='upsc_ph2', KLT='upsc_lt2', KCK='upsc_ck2', KPDFL='upsc_pdfl';
 
 var logs=[], llogs=[], mocks=[], checks={}, phase=0, lc={}, speeds=[], errs=[],
-    planSecs=[], selSubj=[];
-var journeyStart='2026-06-01'; // default; overridden by saved value
+    planSecs=[], selSubj=[], pdfs=[];
 var charts={}, hmM=1, mf='All', hp=8, quoteIdx=0, colIdx={};
-var editingId=null; // ID of log entry being edited (null = new entry mode)
 var _saveTimer=null; // debounce handle
 
 var PH_DEF=[
@@ -620,160 +566,98 @@ var QUOTES=[
 ];
 
 // ============================================================
-// FIREBASE STORAGE — syncs across all devices
-// Falls back to localStorage if Firebase not yet configured
+// PERSISTENT STORAGE — real browser storage (works offline, as a
+// downloaded file, on phone or laptop). Uses IndexedDB as the main
+// store (large capacity, holds PDFs too) and mirrors every write to
+// localStorage as a synchronous backup. This does NOT sync across
+// devices by itself — each device/browser has its own copy. Use
+// "Backup & Sync" (History tab) to move data between phone and
+// laptop, or to keep a copy safe in your git repo.
 // ============================================================
-var _db = null;       // Firestore instance
-var _uid = null;      // Current user ID
-var _auth = null;     // Auth instance
-
-// localStorage helpers (always available as fallback)
-function _lsGet(key, fb) {
-  try { var v=localStorage.getItem('air1_'+key); return v!==null?JSON.parse(v):fb; } catch(e){return fb;}
+var _dbPromise = null;
+function _openDB(){
+  if (_dbPromise) return _dbPromise;
+  _dbPromise = new Promise(function(resolve, reject){
+    if (!('indexedDB' in window)) { reject(new Error('no indexeddb')); return; }
+    var req = indexedDB.open('air1_tracker_db', 1);
+    req.onupgradeneeded = function(e){
+      var db = e.target.result;
+      if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
+    };
+    req.onsuccess = function(e){ resolve(e.target.result); };
+    req.onerror = function(e){ reject(e.target.error); };
+  });
+  return _dbPromise;
 }
-function _lsSet(key, val) {
-  try { localStorage.setItem('air1_'+key, JSON.stringify(val)); } catch(e){}
-}
-
-// Get value — Firestore if logged in, localStorage fallback
-async function sg(key, fallback) {
-  if (_db && _uid) {
-    try {
-      var { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
-      var snap = await getDoc(doc(_db, 'users', _uid, 'data', key));
-      if (snap.exists()) { var v=snap.data().v; _lsSet(key,v); return v; }
-    } catch(e) { console.warn('Firestore get failed, using localStorage:', e); }
-  }
-  return _lsGet(key, fallback);
-}
-
-// Set value — Firestore if logged in, always localStorage too
-async function ss(key, value) {
-  _lsSet(key, value);
-  if (_db && _uid) {
-    try {
-      var { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
-      await setDoc(doc(_db, 'users', _uid, 'data', key), { v: value, t: Date.now() });
-    } catch(e) { console.warn('Firestore set failed:', e); }
-  }
-}
-
-// Firebase init — called after config is provided
-async function initFirebase(config) {
-  var { initializeApp, getApps } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
-  var { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
-  var { getFirestore } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
-  var app = getApps().length ? getApps()[0] : initializeApp(config);
-  _auth = getAuth(app);
-  _db   = getFirestore(app);
-  window._fbAuth = _auth;
-  window._fbProvider = new GoogleAuthProvider();
-  return new Promise(function(resolve) {
-    onAuthStateChanged(_auth, function(user) {
-      if (user) {
-        _uid = user.uid;
-        resolve(user);
-      } else {
-        _uid = null;
-        resolve(null);
-      }
+function idbGet(key){
+  return _openDB().then(function(db){
+    return new Promise(function(resolve, reject){
+      var tx = db.transaction('kv', 'readonly');
+      var rq = tx.objectStore('kv').get(key);
+      rq.onsuccess = function(){ resolve(rq.result); };
+      rq.onerror = function(){ reject(rq.error); };
     });
   });
 }
-
-// Sign in
-async function signInWithGoogle() {
-  var btn = document.getElementById('googleSignInBtn');
-  var err = document.getElementById('loginErr');
-  err.style.display='none';
-  if (!window._fbAuth) {
-    err.style.display='block';
-    err.textContent='Please paste your Firebase config first (click the setup guide link below).';
-    return;
-  }
-  try {
-    btn.textContent='Signing in...';
-    btn.disabled=true;
-    var { signInWithPopup } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
-    await signInWithPopup(window._fbAuth, window._fbProvider);
-    // onAuthStateChanged will handle the rest
-  } catch(e) {
-    btn.innerHTML='<svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>Continue with Google';
-    btn.disabled=false;
-    err.style.display='block';
-    err.textContent='Sign-in failed: '+(e.code==='auth/popup-blocked'?'Popup was blocked — allow popups for this page':e.message);
-  }
+function idbSet(key, value){
+  return _openDB().then(function(db){
+    return new Promise(function(resolve, reject){
+      var tx = db.transaction('kv', 'readwrite');
+      tx.objectStore('kv').put(value, key);
+      tx.oncomplete = function(){ resolve(true); };
+      tx.onerror = function(){ reject(tx.error); };
+    });
+  });
 }
-
-async function signOut() {
-  if(!confirm('Sign out?')) return;
-  var { signOut: fbSignOut } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
-  await fbSignOut(_auth);
-  _uid=null;
-  document.getElementById('loginOverlay').style.display='flex';
-  document.getElementById('userInfo').style.display='none';
-}
-
-// Config paste handler
-async function applyFirebaseConfig() {
-  var raw = document.getElementById('configInput').value.trim();
-  var err = document.getElementById('configErr');
-  err.style.display='none';
+async function sg(key, fallback) {
+  // Try IndexedDB first (primary store, large capacity)
   try {
-    // Parse config — allow both JS object and JSON
-    var cleaned = raw.replace(/^const\s+firebaseConfig\s*=\s*/, '').replace(/;$/, '');
-    var config = Function('return ('+cleaned+')')();
-    if (!config.apiKey || !config.projectId) throw new Error('Missing apiKey or projectId');
-    // Save config to localStorage so it loads next time
-    localStorage.setItem('air1_fb_config', JSON.stringify(config));
-    // Init Firebase
-    var user = await initFirebase(config);
-    if (user) {
-      onUserSignedIn(user);
-    } else {
-      // Config good, now sign in
-      document.getElementById('setupGuide').style.display='none';
-      signInWithGoogle();
+    var v = await idbGet(key);
+    if (v !== undefined && v !== null) {
+      return typeof v === 'string' ? JSON.parse(v) : v;
     }
-  } catch(e) {
-    err.style.display='block';
-    err.textContent='Error: '+e.message+'. Make sure you pasted the full firebaseConfig object.';
+  } catch(e) { /* fall through to localStorage */ }
+  // Fallback / migration: localStorage (works even if IndexedDB is blocked)
+  try {
+    var ls = localStorage.getItem(key);
+    if (ls !== null) {
+      var parsed = JSON.parse(ls);
+      idbSet(key, JSON.stringify(parsed)).catch(function(){});
+      return parsed;
+    }
+  } catch(e) { /* ignore */ }
+  return fallback;
+}
+async function ss(key, value) {
+  var str = JSON.stringify(value);
+  var okIdb = false, okLs = false;
+  try { await idbSet(key, str); okIdb = true; } catch(e) { console.error('IndexedDB save error:', key, e); }
+  // Skip the localStorage mirror for anything too big for its ~5-10MB quota
+  // (localStorage is only a small synchronous backup for logs/settings, not files).
+  if (str.length < 1500000) {
+    try { localStorage.setItem(key, str); okLs = true; } catch(e) { /* quota hit — fine, IndexedDB already has it */ }
   }
+  if (!okIdb && !okLs) console.error('Storage FAILED for key:', key, '— data will not persist.');
 }
-
-function showSetupGuide() {
-  document.getElementById('setupGuide').style.display='flex';
-  return false;
+// Large-file variants (PDFs etc.) — IndexedDB only, never touch localStorage.
+async function ssBig(key, value) {
+  try { await idbSet(key, value); return true; }
+  catch(e) { console.error('IndexedDB save error (large item):', key, e); return false; }
 }
-
-async function onUserSignedIn(user) {
-  // Show loading, hide login
-  document.getElementById('loginOverlay').style.display='none';
-  var ov=document.getElementById('loadOverlay');
-  if(ov){ov.style.display='flex';}
-  var lm=document.getElementById('loadMsg');
-  if(lm)lm.textContent='Syncing your data from cloud...';
-  // Show user info in header
-  var ui=document.getElementById('userInfo');
-  if(ui){ui.style.display='flex';ui.style.removeProperty('display');ui.style.display='flex';}
-  var av=document.getElementById('userAvatar');
-  if(av&&user.photoURL)av.src=user.photoURL;
-  var un=document.getElementById('userName');
-  if(un)un.textContent=user.displayName?user.displayName.split(' ')[0]:'';
-  // Load data and render
-  await load();
-  if(lm)lm.textContent='Ready!';
-  var t=today();
-  ['lgDate','loopDate','mkDate','spDate','errDate'].forEach(function(id){var el=document.getElementById(id);if(el)el.value=t;});
-  var hd=document.getElementById('hDate');
-  if(hd)hd.textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
-  var ap=document.getElementById('actPhase');if(ap)ap.value=phase;
-  var mkp=document.getElementById('mkPhase');if(mkp)mkp.value='Phase '+phase;
-  var lgp=document.getElementById('lgPhase');if(lgp)lgp.value='Phase '+phase;
-  var ep=document.getElementById('errPhase');if(ep)ep.value='Phase '+phase;
-  quoteIdx=Math.floor(Math.random()*QUOTES.length);
-  rQuote(); rDash(); rWeekSum();
-  if(ov)ov.style.display='none';
+async function sgBig(key, fallback) {
+  try {
+    var v = await idbGet(key);
+    if (v === undefined || v === null) return fallback;
+    // Backward-compat: an earlier version of this app JSON-stringified large
+    // items too, which double-encodes a data: URL string. Unwrap it if so.
+    if (typeof v === 'string' && v.charAt(0) === '"') {
+      try {
+        var parsed = JSON.parse(v);
+        if (typeof parsed === 'string') { idbSet(key, parsed).catch(function(){}); return parsed; }
+      } catch(e) { /* not actually JSON — use as-is */ }
+    }
+    return v;
+  } catch(e) { return fallback; }
 }
 
 async function load() {
@@ -786,13 +670,10 @@ async function load() {
   speeds  = await sg(KSP, []);
   errs    = await sg(KE,  []);
   planSecs= await sg(KPN, []);
+  pdfs    = await sg(KPDFL, []);
   var cdV = await sg(KCD, '2028-05-28');
   var cdEl= document.getElementById('cdDate');
   if (cdEl) cdEl.value = cdV || '2028-05-28';
-  var jsV = await sg(KJS, '2026-06-01');
-  journeyStart = jsV || '2026-06-01';
-  var jsEl = document.getElementById('jsDate');
-  if (jsEl) jsEl.value = journeyStart;
   var ph  = await sg(KPH, null);
   if (ph && ph.length === 9) PHS = ph;
   var lt  = await sg(KLT, null);
@@ -821,10 +702,10 @@ async function _doSave() {
       ss(KSP,  speeds),
       ss(KE,   errs),
       ss(KPN,  planSecs),
+      ss(KPDFL, pdfs),
       ss(KPH,  PHS),
       ss(KLT,  LT),
       ss(KCK,  CK),
-      ss(KJS,  journeyStart),
     ]);
   } catch(e) {
     console.error('Save error:', e);
@@ -840,20 +721,35 @@ async function saveCD() {
   }
 }
 
-async function saveJS() {
-  var v = document.getElementById('jsDate').value;
-  if (v) {
-    journeyStart = v;
-    await ss(KJS, v);
-    rHm();
-    toast('Journey start set to ' + fD(v));
-  }
-}
-
 // ============================================================
 // UTILS
 // ============================================================
 function toast(m){var t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2200);}
+// In-page confirm/prompt replacements. Native window.confirm()/prompt() are
+// silently blocked inside sandboxed iframes (e.g. Claude's own artifact
+// preview panel), which makes delete/reset buttons look broken there even
+// though the button click worked. These custom modals always work.
+function customConfirm(msg, onYes){
+  var m=document.createElement('div');m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:600;display:flex;align-items:center;justify-content:center;padding:20px';
+  var box=document.createElement('div');box.style.cssText='background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:18px 20px;max-width:380px;width:100%';
+  var msgEl=document.createElement('div');msgEl.style.cssText='font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:16px;line-height:1.6';msgEl.textContent=msg;
+  var row=document.createElement('div');row.style.cssText='display:flex;gap:8px;justify-content:flex-end';
+  var cancel=document.createElement('button');cancel.className='btn btn-ghost';cancel.textContent='Cancel';cancel.onclick=function(){m.remove();};
+  var ok=document.createElement('button');ok.className='btn btn-d';ok.textContent='Confirm';ok.onclick=function(){m.remove();onYes();};
+  row.appendChild(cancel);row.appendChild(ok);box.appendChild(msgEl);box.appendChild(row);m.appendChild(box);document.body.appendChild(m);
+}
+function customPrompt(msg, defVal, onOk){
+  var m=document.createElement('div');m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:600;display:flex;align-items:center;justify-content:center;padding:20px';
+  var box=document.createElement('div');box.style.cssText='background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:18px 20px;max-width:380px;width:100%';
+  var msgEl=document.createElement('div');msgEl.style.cssText='font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:10px';msgEl.textContent=msg;
+  var inp=document.createElement('input');inp.type='text';inp.value=defVal||'';inp.style.marginBottom='16px';
+  var row=document.createElement('div');row.style.cssText='display:flex;gap:8px;justify-content:flex-end';
+  var cancel=document.createElement('button');cancel.className='btn btn-ghost';cancel.textContent='Cancel';cancel.onclick=function(){m.remove();};
+  var ok=document.createElement('button');ok.className='btn';ok.textContent='OK';ok.onclick=function(){var v=inp.value;m.remove();onOk(v);};
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter'){var v=inp.value;m.remove();onOk(v);}});
+  row.appendChild(cancel);row.appendChild(ok);box.appendChild(msgEl);box.appendChild(inp);box.appendChild(row);m.appendChild(box);document.body.appendChild(m);
+  setTimeout(function(){inp.focus();inp.select();},50);
+}
 function today(){return new Date().toISOString().slice(0,10);}
 function fD(d){if(!d)return'';var p=d.split('-');var mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return parseInt(p[2])+' '+mn[parseInt(p[1])-1]+"'"+p[0].slice(2);}
 function wk(d){var dt=new Date(d);var dy=dt.getDay();var diff=dt.getDate()-dy+(dy===0?-6:1);return new Date(new Date(d).setDate(diff)).toISOString().slice(0,10);}
@@ -866,7 +762,8 @@ function streak(){
   return s;
 }
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function sc(v){return v?(+v>=8?'var(--green)':(+v>=6?'var(--gold2)':'var(--red)')):'var(--t3)';}
+function sc(v,of){if(!v)return'var(--t3)';var pct=+v/(+of||10)*100;return pct>=80?'var(--green)':(pct>=60?'var(--gold2)':'var(--red)');}
+function scLbl(v,of){if(!v)return'-';return v+'/'+(of||10);}
 
 // ============================================================
 // CHARTS
@@ -895,6 +792,7 @@ function showTab(id,btn){
   if(id==='mocks')rMocks();
   if(id==='errors')rErrs();
   if(id==='plan')rPlan();
+  if(id==='docs')rDocs();
 }
 
 // ============================================================
@@ -926,7 +824,7 @@ function rDash(){
   var lp=document.getElementById('dashLoops');if(lp){lp.innerHTML='';Object.keys(LT).forEach(function(s){var t=LT[s];var c=lc[s]||0;var pct=Math.round(c/t*100);lp.innerHTML+='<div class="msr"><div class="msr-l">'+s+'</div><div style="display:flex;align-items:center;gap:8px"><div style="width:80px;background:var(--bg5);border-radius:2px;height:3px;overflow:hidden"><div style="width:'+pct+'%;height:3px;background:var(--gold);border-radius:2px"></div></div><div class="msr-v">'+c+'/'+t+'</div></div></div>';});}
   rHm();
   var rec=logs.slice().sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,7);
-  si('recentTb').innerHTML=rec.length?rec.map(function(l){return'<tr><td>'+fD(l.date)+'</td><td>'+(l.subjects||[]).map(function(s){return'<span class="badge bg" style="margin-right:2px">'+s+'</span>';}).join('')+'</td><td style="color:var(--t2)">'+(l.hours||0)+'h</td><td style="color:var(--gold2)">'+(l.answers||0)+'</td><td style="font-family:var(--mono);color:'+sc(l.score)+'">'+(l.score||'-')+'</td><td style="color:var(--green)">'+(l.essays||0)+'</td><td style="color:var(--blue)">'+(l.cases||0)+'</td><td style="color:var(--t3);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(l.notes||'')+'</td><td><button class="btn btn-sm" style="background:rgba(74,144,217,.1);border-color:var(--bbd);color:var(--blue)" onclick="editLog('+l.id+')">edit</button></td></tr>';}).join(''):'<tr><td colspan="9" class="empty">No entries yet</td></tr>';
+  si('recentTb').innerHTML=rec.length?rec.map(function(l){return'<tr><td>'+fD(l.date)+'</td><td>'+(l.subjects||[]).map(function(s){return'<span class="badge bg" style="margin-right:2px">'+s+'</span>';}).join('')+'</td><td style="color:var(--t2)">'+(l.hours||0)+'h</td><td style="color:var(--gold2)">'+(l.answers||0)+'</td><td style="font-family:var(--mono);color:'+sc(l.score,l.scoreOf)+'">'+scLbl(l.score,l.scoreOf)+'</td><td style="color:var(--green)">'+(l.essays||0)+'</td><td style="color:var(--blue)">'+(l.cases||0)+'</td><td style="color:var(--t3);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(l.notes||'')+'</td></tr>';}).join(''):'<tr><td colspan="8" class="empty">No entries yet</td></tr>';
 }
 
 function rCk(){
@@ -955,79 +853,25 @@ function rHm(){
   var wrap=document.getElementById('hmWrap');if(!wrap)return;
   var dm={};logs.forEach(function(l){dm[l.date]=(dm[l.date]||0)+(+l.hours||0);});
   var td=today();var tdDt=new Date(td);
-
-  // planStart = manually set journey start date (saved in settings)
-  // Days before planStart are neutral grey — not missed, not studied
-  var planStart = journeyStart || today();
-
   var rs;
-  if(hmM===0){
-    // 'All' view: start from planStart's month beginning
-    rs=new Date(planStart);rs=new Date(rs.getFullYear(),rs.getMonth(),1);
-  } else {
-    rs=new Date(tdDt);rs.setDate(1);rs.setMonth(rs.getMonth()-(hmM-1));
-  }
+  if(hmM===0){var ad=logs.map(function(l){return l.date;}).sort();rs=ad.length?new Date(ad[0]):new Date(tdDt);rs=new Date(rs.getFullYear(),rs.getMonth(),1);}
+  else{rs=new Date(tdDt);rs.setDate(1);rs.setMonth(rs.getMonth()-(hmM-1));}
   var gs=new Date(rs);var dow=gs.getDay();gs.setDate(gs.getDate()-(dow===0?6:dow-1));
   var mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var weeks=[];var cur=new Date(gs);
   while(cur<=tdDt){var w=[];for(var i=0;i<7;i++){w.push(cur.toISOString().slice(0,10));cur.setDate(cur.getDate()+1);}weeks.push(w);}
   var rss=rs.toISOString().slice(0,10);
-
   var ml='<div style="display:flex;gap:3px;margin-bottom:3px">';var lm=-1;
   weeks.forEach(function(w){var m=parseInt(w[0].slice(5,7))-1;var lbl='';if(m!==lm){lbl=mn[m];lm=m;}ml+='<div style="width:11px;font-family:var(--mono);font-size:8px;color:var(--t3);white-space:nowrap;overflow:visible">'+lbl+'</div>';});ml+='</div>';
-
   var cells='<div style="display:flex;gap:3px">';
-  weeks.forEach(function(w){
-    cells+='<div style="display:flex;flex-direction:column;gap:3px">';
-    w.forEach(function(ds){
-      var h=dm[ds]||0;
-      var cls='hm-cell';
-      var tip='';
-      var bd=ds===td?' style="outline:1.5px solid var(--gold2);outline-offset:1px"':'';
-
-      if(ds>td){
-        // Future day — dim neutral
-        cls+=' fut';
-      } else if(ds<planStart){
-        // Before journey started — neutral grey, no tooltip (not a missed day)
-        cls+=' fut';
-        tip='';
-      } else if(ds<rss){
-        // In range but before display window start — dim
-        cls+=' fut';
-      } else if(h===0){
-        // In range, after plan start, no study — genuinely missed
-        cls+=' miss';
-        tip=ds+': missed';
-      } else {
-        // Studied
-        cls+=' '+(h<1.5?'l1':h<3?'l2':h<5?'l3':'l4');
-        tip=ds+': '+h.toFixed(1)+'h';
-      }
-      cells+='<div class="'+cls+'" data-t="'+tip+'"'+bd+'></div>';
-    });
-    cells+='</div>';
-  });
-  cells+='</div>';
+  weeks.forEach(function(w){cells+='<div style="display:flex;flex-direction:column;gap:3px">';w.forEach(function(ds){var h=dm[ds]||0;var inR=ds>=rss&&ds<=td;var cls='hm-cell';var tip=ds;if(!inR){cls+=' fut';tip='';}else if(ds>td){cls+=' fut';}else if(h===0){cls+=' miss';tip=ds+': missed';}else{cls+=' '+(h<1.5?'l1':h<3?'l2':h<5?'l3':'l4');tip=ds+': '+h.toFixed(1)+'h';}var bd=ds===td?' style="outline:1.5px solid var(--gold2);outline-offset:1px"':'';cells+='<div class="'+cls+'" data-t="'+tip+'"'+bd+'></div>';});cells+='</div>';});cells+='</div>';
   wrap.innerHTML=ml+cells;
-
-  // Stats: only count days from planStart onwards (not before journey began)
-  var effectiveStart=planStart>rss?planStart:rss;
-  var fl=logs.filter(function(l){return l.date>=effectiveStart&&l.date<=td;});
+  var fl=logs.filter(function(l){return l.date>=rss&&l.date<=td;});
   var ad2=[].concat(fl.map(function(l){return l.date;})).filter(function(v,i,a){return a.indexOf(v)===i;}).length;
-  var effectiveStartDt=new Date(effectiveStart);
-  var tot=Math.round((tdDt-effectiveStartDt)/(1000*60*60*24))+1;
+  var tot=Math.round((tdDt-rs)/(1000*60*60*24))+1;
   var fh=fl.reduce(function(s,l){return s+(+l.hours||0);},0);
   var fa=fl.reduce(function(s,l){return s+(+l.answers||0);},0);
-  var missed=Math.max(0,tot-ad2);
-  var hs=document.getElementById('hmStats');
-  if(hs)hs.innerHTML=
-    '<div style="font-family:var(--mono);font-size:9px;color:var(--t3)"><span style="color:var(--green)">'+ad2+'</span> days studied</div>'+
-    '<div style="font-family:var(--mono);font-size:9px;color:var(--t3)"><span style="color:var(--red)">'+missed+'</span> days missed</div>'+
-    '<div style="font-family:var(--mono);font-size:9px;color:var(--t3)"><span style="color:var(--gold2)">'+Math.round(ad2/Math.max(1,tot)*100)+'%</span> consistency</div>'+
-    '<div style="font-family:var(--mono);font-size:9px;color:var(--t3)"><span style="color:var(--gold2)">'+fh.toFixed(1)+'h</span> studied</div>'+
-    '<div style="font-family:var(--mono);font-size:9px;color:var(--t3)"><span style="color:var(--gold2)">'+fa+'</span> answers</div>'+
-    '<div style="font-family:var(--mono);font-size:9px;color:var(--t3)">journey started <span style="color:var(--gold2)">'+fD(planStart)+'</span></div>';
+  var hs=document.getElementById('hmStats');if(hs)hs.innerHTML='<div style="font-family:var(--mono);font-size:9px;color:var(--t3)"><span style="color:var(--green)">'+ad2+'</span> days studied</div><div style="font-family:var(--mono);font-size:9px;color:var(--t3)"><span style="color:var(--red)">'+(tot-ad2)+'</span> days missed</div><div style="font-family:var(--mono);font-size:9px;color:var(--t3)"><span style="color:var(--gold2)">'+Math.round(ad2/Math.max(1,tot)*100)+'%</span> consistency</div><div style="font-family:var(--mono);font-size:9px;color:var(--t3)"><span style="color:var(--gold2)">'+fh.toFixed(1)+'h</span> studied</div><div style="font-family:var(--mono);font-size:9px;color:var(--t3)"><span style="color:var(--gold2)">'+fa+'</span> answers</div>';
 }
 
 function applyPreset(){var v=document.getElementById('cdPreset').value;if(v){document.getElementById('cdDate').value=v;saveCD();}}
@@ -1068,13 +912,14 @@ function rPerf(){
   var cons=Math.round(a30/30*100);
   var cp=document.getElementById('consPct');if(cp)cp.textContent=cons+'% (30d)';
   var sl=logs.filter(function(l){return l.score;});
-  var avs=sl.length?(sl.reduce(function(s,l){return s+(+l.score||0);},0)/sl.length).toFixed(1):null;
+  var avsPct=sl.length?Math.round(sl.reduce(function(s,l){return s+(+l.score/(+l.scoreOf||10)*100);},0)/sl.length):null;
+  var avs=avsPct; // percentage now, since "out of" can vary per entry
   document.getElementById('perfStats').innerHTML=
     '<div class="stat"><div class="slbl">Total Hours</div><div class="sval">'+th.toFixed(0)+'</div><div class="ssub">avg '+(logs.length?(th/logs.length).toFixed(1):0)+'h/day</div></div>'+
     '<div class="stat"><div class="slbl">Answers</div><div class="sval">'+ta+'</div><div class="ssub">'+Math.round(ta/600*100)+'% to 600 target</div><div class="spbar"><div class="spbar-f" style="width:'+Math.min(100,ta/600*100)+'%"></div></div></div>'+
     '<div class="stat"><div class="slbl">Streak</div><div class="sval" style="color:var(--green)">'+st+'</div><div class="ssub">days consecutive</div></div>'+
     '<div class="stat"><div class="slbl">Consistency</div><div class="sval" style="color:'+(cons>=80?'var(--green)':cons>=60?'var(--gold2)':'var(--red)')+'">'+cons+'%</div><div class="ssub">last 30 days</div></div>'+
-    '<div class="stat"><div class="slbl">Avg Answer Score</div><div class="sval" style="color:'+sc(avs)+'">'+(avs||'-')+'<span style="font-size:12px;color:var(--t3)">/10</span></div><div class="ssub">'+sl.length+' scored</div></div>';
+    '<div class="stat"><div class="slbl">Avg Answer Score</div><div class="sval" style="color:'+(avs!==null?(avs>=80?'var(--green)':avs>=60?'var(--gold2)':'var(--red)'):'var(--t3)')+'">'+(avs!==null?avs:'-')+'<span style="font-size:12px;color:var(--t3)">'+(avs!==null?'%':'')+'</span></div><div class="ssub">'+sl.length+' scored (any scale)</div></div>';
   rMockTrend();rSubjBest();rCumAns();rWeekHrs();rPhaseOut();rSubjHrs();rCons();rSpeed();rIns();
 }
 function rMockTrend(){
@@ -1087,7 +932,7 @@ function rSubjBest(){
   var sps=['GS1','GS2','GS3','GS4','Anthro P1','Anthro P2','Essay'];
   var bests=sps.map(function(p){var pm=mocks.filter(function(m){return m.type===p&&m.outOf;});return pm.length?Math.round(Math.max.apply(null,pm.map(function(m){return +m.score/+m.outOf*100;}))):0;});
   var tgts=sps.map(function(p){return TGTS[p]||52;});
-  mkC('cSubjBest','bar',{labels:sps.map(function(s){return s.replace(' P','P');}),datasets:[{label:'Best',data:bests,backgroundColor:bests.map(function(b,i){return b>=tgts[i]?'rgba(63,185,122,.65)':'rgba(201,168,76,.5)';}),borderRadius:3,borderSkipped:false},{label:'Target',data:tgts,type:'line',borderColor:'rgba(255,255,255,.18)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,backgroundColor:'transparent'}]},{plugins:{legend:{display:true,labels:{color:'#52504c',boxWidth:9,padding:8,font:{size:8}}}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,max:100,ticks:{callback:function(v){return v+'%';}},grid:{color:'rgba(255,255,255,.03)'}}}});
+  mkC('cSubjBest','bar',{labels:sps.map(function(s){return s.replace(' P','P');}),datasets:[{label:'Best',data:bests,backgroundColor:sps.map(function(s){return (MCOLS[s]||'#c9a84c')+'99';}),borderColor:bests.map(function(b,i){return b>=tgts[i]?'#3fb97a':'transparent';}),borderWidth:2,borderRadius:3,borderSkipped:false},{label:'Target',data:tgts,type:'line',borderColor:'rgba(255,255,255,.18)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,backgroundColor:'transparent'}]},{plugins:{legend:{display:true,labels:{color:'#52504c',boxWidth:9,padding:8,font:{size:8}}}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,max:100,ticks:{callback:function(v){return v+'%';}},grid:{color:'rgba(255,255,255,.03)'}}}});
   var ins=document.getElementById('subjIns');if(ins){ins.innerHTML='';sps.forEach(function(p,i){if(bests[i]>0){var gap=bests[i]-tgts[i];ins.innerHTML+='<div class="insight '+(gap>=0?'green':'red')+'" style="padding:4px 7px;margin-bottom:4px">'+p+': '+bests[i]+'% '+(gap>=0?'(+'+gap+'% above)':'('+gap+'% below)')+'</div>';}});}
 }
 function rCumAns(){
@@ -1161,7 +1006,6 @@ function saveSpeed(){
 // LOG ENTRY
 // ============================================================
 function togS(el,s){if(selSubj.indexOf(s)>=0){selSubj=selSubj.filter(function(x){return x!==s;});el.classList.remove('on');}else{selSubj.push(s);el.classList.add('on');}}
-
 function saveLog(){
   var d=document.getElementById('lgDate').value||today();
   var h=document.getElementById('lgHrs').value||'5';
@@ -1170,84 +1014,15 @@ function saveLog(){
   var c=parseInt(document.getElementById('lgCas').value)||0;
   var n=document.getElementById('lgNotes').value.trim();
   var sc2=parseFloat(document.getElementById('lgScore').value)||null;
+  var scOf=parseFloat(document.getElementById('lgScoreOf').value)||10;
   var p=document.getElementById('lgPhase').value;
   if(!selSubj.length){toast('Select at least one subject!');return;}
-
-  if(editingId!==null){
-    // UPDATE existing
-    var idx=logs.findIndex(function(l){return l.id===editingId;});
-    if(idx>=0){
-      logs[idx]={date:d,phase:p,subjects:selSubj.slice(),hours:h,answers:a,score:sc2,essays:e,cases:c,notes:n,id:editingId};
-      saveAll();
-      toast('Entry updated!');
-    }
-    cancelEdit();
-  } else {
-    // NEW entry
-    logs.push({date:d,phase:p,subjects:selSubj.slice(),hours:h,answers:a,score:sc2,essays:e,cases:c,notes:n,id:Date.now()});
-    saveAll();
-    _resetLogForm();
-    toast('Entry saved! Data persisted.');
-  }
-  rWeekSum();
-}
-
-function _resetLogForm(){
-  selSubj=[];
-  document.querySelectorAll('#subjChips .chip').forEach(function(c){c.classList.remove('on');});
-  document.getElementById('lgDate').value=today();
-  document.getElementById('lgAns').value='1';
-  document.getElementById('lgScore').value='';
-  document.getElementById('lgEss').value='0';
-  document.getElementById('lgCas').value='0';
-  document.getElementById('lgNotes').value='';
-  document.getElementById('lgHrs').value='5';
-}
-
-// Load an existing entry into the form for editing
-function editLog(id){
-  var l=logs.find(function(l){return l.id===id;});
-  if(!l)return;
-  editingId=id;
-  // Switch to Log tab
-  showTab('log', document.querySelector('.nb:nth-child(3)'));
-  // Fill form
-  document.getElementById('lgDate').value=l.date;
-  document.getElementById('lgPhase').value=l.phase||('Phase '+phase);
-  document.getElementById('lgHrs').value=l.hours||'5';
-  document.getElementById('lgAns').value=l.answers||0;
-  document.getElementById('lgScore').value=l.score||'';
-  document.getElementById('lgEss').value=l.essays||0;
-  document.getElementById('lgCas').value=l.cases||0;
-  document.getElementById('lgNotes').value=l.notes||'';
-  // Set subject chips
-  selSubj=(l.subjects||[]).slice();
-  document.querySelectorAll('#subjChips .chip').forEach(function(c){
-    var s=c.getAttribute('onclick').match(/'([^']+)'/);
-    if(s&&selSubj.indexOf(s[1])>=0)c.classList.add('on');
-    else c.classList.remove('on');
-  });
-  // Update UI to edit mode
-  document.getElementById('lgEditBanner').style.display='inline-block';
-  document.getElementById('lgSaveBtn').textContent='✓ Update Entry';
-  document.getElementById('lgSaveBtn').style.background='rgba(74,144,217,.15)';
-  document.getElementById('lgSaveBtn').style.borderColor='var(--bbd)';
-  document.getElementById('lgSaveBtn').style.color='var(--blue)';
-  document.getElementById('lgCancelBtn').style.display='inline-block';
-  // Scroll form into view
-  document.getElementById('tab-log').scrollIntoView({behavior:'smooth',block:'start'});
-  toast('Editing entry for '+fD(l.date));
-}
-
-function cancelEdit(){
-  editingId=null;
-  _resetLogForm();
-  document.getElementById('lgEditBanner').style.display='none';
-  document.getElementById('lgSaveBtn').textContent='+ Save Entry';
-  document.getElementById('lgSaveBtn').style.background='';
-  document.getElementById('lgSaveBtn').style.borderColor='';
-  document.getElementById('lgSaveBtn').style.color='';
-  document.getElementById('lgCancelBtn').style.display='none';
+  logs.push({date:d,phase:p,subjects:selSubj.slice(),hours:h,answers:a,score:sc2,scoreOf:scOf,essays:e,cases:c,notes:n,id:Date.now()});
+  saveAll();
+  selSubj=[];document.querySelectorAll('.chip').forEach(function(c){c.classList.remove('on');});
+  document.getElementById('lgAns').value='1';document.getElementById('lgScore').value='';document.getElementById('lgScoreOf').value='10';
+  document.getElementById('lgEss').value='0';document.getElementById('lgCas').value='0';document.getElementById('lgNotes').value='';
+  rWeekSum();toast('Entry saved! Data persisted.');
 }
 function rWeekSum(){
   var ws=new Date(wk(today()));var wl=logs.filter(function(l){return new Date(l.date)>=ws;});
@@ -1268,8 +1043,25 @@ function rWeekSum(){
 // ============================================================
 // LOOPS
 // ============================================================
+function addLoopSubject(){
+  customPrompt('New subject name (e.g. CSAT, Essay, GS5):', '', function(name){
+    if(!name)return;name=name.trim();if(!name)return;
+    if(LT[name]!==undefined){toast('Subject already exists');return;}
+    customPrompt('How many loops/revisions is the target for '+name+'?', '3', function(tv){
+      var t=parseInt(tv)||3;
+      LT[name]=t;saveAll();rLoops();rPhases();toast(name+' added to loop tracker');
+    });
+  });
+}
+function removeLoopSubject(s){
+  customConfirm('Remove "'+s+'" from loop tracking? (its logged loop history stays in the table below)', function(){
+    delete LT[s];delete lc[s];saveAll();rLoops();rPhases();
+  });
+}
 function rLoops(){
   var el=document.getElementById('loopGrid');if(!el)return;el.innerHTML='';
+  var lsub=document.getElementById('loopSubj');
+  if(lsub){var cur=lsub.value;lsub.innerHTML=Object.keys(LT).map(function(s){return'<option>'+s+'</option>';}).join('');if(Object.keys(LT).indexOf(cur)>=0)lsub.value=cur;}
   Object.keys(LT).forEach(function(s){
     var t=LT[s];var c=lc[s]||0;
     var card=document.createElement('div');card.className='card';card.style.margin='0';
@@ -1320,12 +1112,12 @@ function rPhases(){
     drow.appendChild(di);drow.appendChild(duri);
     div.appendChild(dot);div.appendChild(row);div.appendChild(drow);tl.appendChild(div);
   });
-  var ltg=document.getElementById('ltGrid');if(ltg){ltg.innerHTML='';Object.keys(LT).forEach(function(s){var c=document.createElement('div');c.style.cssText='background:var(--bg4);border:1px solid var(--border);border-radius:4px;padding:10px 12px';var l=document.createElement('div');l.style.cssText='font-family:var(--mono);font-size:9px;color:var(--t3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px';l.textContent=s;var inp=document.createElement('input');inp.type='number';inp.min='1';inp.max='10';inp.value=LT[s];inp.style.cssText='width:60px;font-size:18px;font-weight:700;color:var(--gold2);text-align:center;background:var(--bg5);border:1px solid var(--border);border-radius:4px;padding:4px;font-family:var(--mono)';inp.addEventListener('change',(function(subj,inp2){return function(){var v=+inp2.value;if(v>=1&&v<=10){LT[subj]=v;saveAll();toast(subj+' loops: '+v);}}})(s,inp));var sp=document.createElement('span');sp.style.cssText='font-family:var(--mono);font-size:9px;color:var(--t3);margin-left:6px';sp.textContent='loops';var row=document.createElement('div');row.style.display='flex';row.style.alignItems='center';row.appendChild(inp);row.appendChild(sp);c.appendChild(l);c.appendChild(row);ltg.appendChild(c);});}
+  var ltg=document.getElementById('ltGrid');if(ltg){ltg.innerHTML='';Object.keys(LT).forEach(function(s){var c=document.createElement('div');c.style.cssText='background:var(--bg4);border:1px solid var(--border);border-radius:4px;padding:10px 12px';var l=document.createElement('div');l.style.cssText='font-family:var(--mono);font-size:9px;color:var(--t3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;display:flex;justify-content:space-between;align-items:center';var lt2=document.createElement('span');lt2.textContent=s;l.appendChild(lt2);var del=document.createElement('span');del.textContent='✕';del.style.cssText='cursor:pointer;color:var(--t3)';del.title='Remove subject';del.addEventListener('click',(function(subj){return function(){removeLoopSubject(subj);};})(s));l.appendChild(del);var inp=document.createElement('input');inp.type='number';inp.min='1';inp.max='999';inp.value=LT[s];inp.style.cssText='width:60px;font-size:18px;font-weight:700;color:var(--gold2);text-align:center;background:var(--bg5);border:1px solid var(--border);border-radius:4px;padding:4px;font-family:var(--mono)';inp.addEventListener('change',(function(subj,inp2){return function(){var v=+inp2.value;if(v>=1){LT[subj]=v;saveAll();rLoops();toast(subj+' loops: '+v);}}})(s,inp));var sp=document.createElement('span');sp.style.cssText='font-family:var(--mono);font-size:9px;color:var(--t3);margin-left:6px';sp.textContent='loops (no limit)';var row=document.createElement('div');row.style.display='flex';row.style.alignItems='center';row.appendChild(inp);row.appendChild(sp);c.appendChild(l);c.appendChild(row);ltg.appendChild(c);});}
   var ce=document.getElementById('ckEditList');if(ce){ce.innerHTML='';CK.forEach(function(item,i){var row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--border)';var num=document.createElement('span');num.style.cssText='font-family:var(--mono);font-size:9px;color:var(--t3);width:18px;text-align:center;flex-shrink:0';num.textContent=i+1;var li=document.createElement('input');li.type='text';li.value=item.label;li.style.cssText='flex:1;background:var(--bg4);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 7px;outline:none';li.addEventListener('change',(function(idx,inp){return function(){CK[idx].label=inp.value;saveAll();}})(i,li));var ti=document.createElement('input');ti.type='text';ti.value=item.time;ti.style.cssText='width:70px;background:var(--bg4);border:1px solid var(--border);border-radius:3px;color:var(--gold2);font-family:var(--mono);font-size:10px;padding:4px 7px;outline:none;text-align:center';ti.addEventListener('change',(function(idx,inp){return function(){CK[idx].time=inp.value;saveAll();}})(i,ti));var del=document.createElement('button');del.className='btn btn-d btn-sm';del.textContent='x';del.addEventListener('click',(function(idx){return function(){if(CK.length<=1){toast('Cannot remove last!');return;}CK.splice(idx,1);saveAll();rPhases();}})(i));row.appendChild(num);row.appendChild(li);row.appendChild(ti);row.appendChild(del);ce.appendChild(row);});}
 }
 function savePhase(){phase=parseInt(document.getElementById('actPhase').value);saveAll();rPhases();document.getElementById('hPhase').textContent='PHASE '+phase;toast('Phase updated');}
 function addCkItem(){CK.push({id:'ck_'+Date.now(),label:'New task',time:'00:00'});saveAll();rPhases();}
-function resetCk(){if(!confirm('Reset checklist?'))return;CK=CK_DEF.map(function(i){return{id:i.id,label:i.label,time:i.time};});saveAll();rPhases();rCk();toast('Reset');}
+function resetCk(){customConfirm('Reset checklist to default?', function(){CK=CK_DEF.map(function(i){return{id:i.id,label:i.label,time:i.time};});saveAll();rPhases();rCk();toast('Reset');});}
 
 // ============================================================
 // MOCKS
@@ -1342,7 +1134,7 @@ function rMocks(){
     '<div class="stat"><div class="slbl">Avg Score</div><div class="sval" style="color:var(--purple)">'+(av.length?Math.round(av.reduce(function(a,b){return a+b;},0)/av.length)+'%':'-')+'</div><div class="ssub">'+mocks.length+' mocks taken</div></div>';
   var papers=['GS1','GS2','GS3','GS4','Anthro P1','Anthro P2','Prelims','Essay'];
   var avgs=papers.map(function(p){var pm=mocks.filter(function(m){return m.type===p&&m.outOf;});return pm.length?Math.round(pm.reduce(function(s,m){return s+(+m.score/+m.outOf*100);},0)/pm.length):null;});
-  mkC('cMockDist','bar',{labels:papers.map(function(p){return p.replace(' P','P');}),datasets:[{data:avgs,backgroundColor:avgs.map(function(v,i){return v===null?'transparent':v>=(Object.values(TGTS)[i]||52)?'rgba(63,185,122,.65)':'rgba(201,168,76,.55)';}),borderRadius:3,borderSkipped:false}]},{scales:{x:{grid:{display:false}},y:{beginAtZero:true,max:100,ticks:{callback:function(v){return v+'%';}},grid:{color:'rgba(255,255,255,.03)'}}}});
+  mkC('cMockDist','bar',{labels:papers.map(function(p){return p.replace(' P','P');}),datasets:[{data:avgs,backgroundColor:papers.map(function(p,i){return avgs[i]===null?'transparent':(MCOLS[p]||'#c9a84c')+'99';}),borderColor:avgs.map(function(v,i){return v!==null&&v>=(TGTS[papers[i]]||52)?'#3fb97a':'transparent';}),borderWidth:2,borderRadius:3,borderSkipped:false}]},{scales:{x:{grid:{display:false}},y:{beginAtZero:true,max:100,ticks:{callback:function(v){return v+'%';}},grid:{color:'rgba(255,255,255,.03)'}}}});
   var rec=mocks.slice().sort(function(a,b){return a.date.localeCompare(b.date);}).slice(-15);
   if(rec.length)mkC('cMockRec','line',{labels:rec.map(function(m){return fD(m.date);}),datasets:[{data:rec.map(function(m){return m.outOf?(+m.score/+m.outOf*100).toFixed(1):+m.score;}),borderColor:'#c9a84c',backgroundColor:'rgba(201,168,76,.06)',borderWidth:1.5,pointBackgroundColor:rec.map(function(m){return MCOLS[m.type]||'#c9a84c';}),pointRadius:4,tension:.3,fill:true}]},{scales:{x:{grid:{display:false}},y:{min:0,max:100,ticks:{callback:function(v){return v+'%';}},grid:{color:'rgba(255,255,255,.03)'}}}});
   var sorted=mocks.slice().sort(function(a,b){return b.date.localeCompare(a.date);});
@@ -1430,7 +1222,7 @@ function rPlan(){
     var bts=document.createElement('div');bts.style.cssText='display:flex;gap:4px;flex-shrink:0';
     var ub=document.createElement('button');ub.className='btn btn-sm btn-ghost';ub.textContent='up';ub.addEventListener('click',(function(id){return function(){var i=planSecs.findIndex(function(s){return s.id===id;});if(i>0){var t=planSecs[i];planSecs[i]=planSecs[i-1];planSecs[i-1]=t;saveAll();rPlan();}}})(sec.id));
     var db=document.createElement('button');db.className='btn btn-sm btn-ghost';db.textContent='dn';db.addEventListener('click',(function(id){return function(){var i=planSecs.findIndex(function(s){return s.id===id;});if(i<planSecs.length-1){var t=planSecs[i];planSecs[i]=planSecs[i+1];planSecs[i+1]=t;saveAll();rPlan();}}})(sec.id));
-    var xb=document.createElement('button');xb.className='btn btn-sm btn-d';xb.textContent='x';xb.addEventListener('click',(function(id){return function(){if(!confirm('Delete this section?'))return;planSecs=planSecs.filter(function(s){return s.id!==id;});saveAll();rPlan();};})(sec.id));
+    var xb=document.createElement('button');xb.className='btn btn-sm btn-d';xb.textContent='x';xb.addEventListener('click',(function(id){return function(){customConfirm('Delete this section?', function(){planSecs=planSecs.filter(function(s){return s.id!==id;});saveAll();rPlan();});};})(sec.id));
     bts.appendChild(ub);bts.appendChild(db);bts.appendChild(xb);hdr.appendChild(dot);hdr.appendChild(ti);hdr.appendChild(bts);
     var ta=document.createElement('textarea');ta.style.cssText='width:100%;background:transparent;border:none;color:var(--t2);font-family:var(--mono);font-size:11px;line-height:1.8;padding:12px 14px;outline:none;resize:none;min-height:80px';ta.placeholder='Write anything - schedule, targets, notes, quotes...';ta.value=sec.content;
     ta.addEventListener('change',(function(id,ta2){return function(){var s=planSecs.find(function(s){return s.id===id;});if(s){s.content=ta2.value;saveAll();}}})(sec.id,ta));
@@ -1456,7 +1248,7 @@ function showTplPicker(){
   box.appendChild(lst);m.appendChild(box);document.body.appendChild(m);
 }
 function exportPlan(){var t=planSecs.map(function(s){return'== '+s.title+' ==\n'+s.content;}).join('\n\n');var a=document.createElement('a');a.href='data:text/plain;charset=utf-8,'+encodeURIComponent(t);a.download='upsc-plan-'+today()+'.txt';a.click();toast('Exported!');}
-function clearPlan(){if(!confirm('Clear entire plan?'))return;planSecs=[];saveAll();rPlan();toast('Cleared');}
+function clearPlan(){customConfirm('Clear entire plan?', function(){planSecs=[];saveAll();rPlan();toast('Cleared');});}
 
 // ============================================================
 // HISTORY
@@ -1469,53 +1261,176 @@ function renderHist(){
   if(fp)f=f.filter(function(l){return l.phase===fp;});
   if(fsr)f=f.filter(function(l){return (l.notes||'').toLowerCase().indexOf(fsr.toLowerCase())>=0||(l.subjects||[]).join(' ').toLowerCase().indexOf(fsr.toLowerCase())>=0;});
   var hc=document.getElementById('histCnt');if(hc)hc.textContent=f.length+' entries';
-  document.getElementById('histTb').innerHTML=f.length?f.map(function(l){
-    var isEd=editingId===l.id;
-    var rowBg=isEd?'background:rgba(74,144,217,.06);':'';
-    return'<tr style="'+rowBg+'"><td>'+fD(l.date)+'</td><td><span class="badge bg">'+(l.phase||'-')+'</span></td><td>'+(l.subjects||[]).map(function(s){return'<span class="badge bx" style="margin-right:2px">'+s+'</span>';}).join('')+'</td><td style="font-family:var(--mono)">'+(l.hours||0)+'h</td><td style="color:var(--gold2)">'+(l.answers||0)+'</td><td style="font-family:var(--mono);color:'+sc(l.score)+'">'+(l.score||'-')+'</td><td style="color:var(--green)">'+(l.essays||0)+'</td><td style="color:var(--blue)">'+(l.cases||0)+'</td><td style="color:var(--t3);font-size:9px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(l.notes||'')+'</td><td style="white-space:nowrap">'+(isEd?'<span class="badge bb">editing</span> ':'')+'<button class="btn btn-sm" style="background:rgba(74,144,217,.1);border-color:var(--bbd);color:var(--blue)" onclick="editLog('+l.id+')">edit</button> <button class="btn btn-d btn-sm" onclick="delLog('+l.id+')">x</button></td></tr>';
-  }).join(''):'<tr><td colspan="10" class="empty">No entries found</td></tr>';
+  document.getElementById('histTb').innerHTML=f.length?f.map(function(l){return'<tr><td>'+fD(l.date)+'</td><td><span class="badge bg">'+(l.phase||'-')+'</span></td><td>'+(l.subjects||[]).map(function(s){return'<span class="badge bx" style="margin-right:2px">'+s+'</span>';}).join('')+'</td><td style="font-family:var(--mono)">'+(l.hours||0)+'h</td><td style="color:var(--gold2)">'+(l.answers||0)+'</td><td style="font-family:var(--mono);color:'+sc(l.score,l.scoreOf)+'">'+scLbl(l.score,l.scoreOf)+'</td><td style="color:var(--green)">'+(l.essays||0)+'</td><td style="color:var(--blue)">'+(l.cases||0)+'</td><td style="color:var(--t3);font-size:9px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(l.notes||'')+'</td><td><button class="btn btn-d btn-sm" onclick="delLog('+l.id+')">x</button></td></tr>';}).join(''):'<tr><td colspan="10" class="empty">No entries found</td></tr>';
 }
 function rHist(){renderHist();}
-function delLog(id){
-  if(editingId===id)cancelEdit();
-  logs=logs.filter(function(l){return l.id!==id;});
-  saveAll();renderHist();
-}
-function clearAll(){if(!confirm('Delete ALL data permanently?'))return;logs=[];llogs=[];mocks=[];checks={};lc={};speeds=[];errs=[];planSecs=[];saveAll();rDash();toast('All data cleared');}
+function delLog(id){logs=logs.filter(function(l){return l.id!==id;});saveAll();renderHist();}
+function clearAll(){customConfirm('Delete ALL data permanently?', function(){logs=[];llogs=[];mocks=[];checks={};lc={};speeds=[];errs=[];planSecs=[];saveAll();rDash();toast('All data cleared');});}
 
 // ============================================================
-// INIT — Firebase auth drives everything
+// DOCUMENTS — PDF attach/view + full backup export/import
+// ============================================================
+function rDocs(){
+  var pc=document.getElementById('pdfCount');if(pc)pc.textContent=pdfs.length+' file'+(pdfs.length===1?'':'s');
+  var el=document.getElementById('pdfList');if(!el)return;
+  el.innerHTML=pdfs.length?'':'<div class="empty">No PDFs attached yet</div>';
+  pdfs.slice().sort(function(a,b){return b.id-a.id;}).forEach(function(p){
+    var row=document.createElement('div');row.className='msr';
+    var l=document.createElement('div');l.className='msr-l';l.textContent=p.name+'  ('+(p.size/1024/1024).toFixed(2)+' MB)';
+    var r=document.createElement('div');r.style.cssText='display:flex;gap:6px';
+    var vb=document.createElement('button');vb.className='btn btn-sm';vb.textContent='View';vb.onclick=(function(id){return function(){viewPdf(id);};})(p.id);
+    var nb=document.createElement('button');nb.className='btn btn-ghost btn-sm';nb.textContent='Open in tab';nb.onclick=(function(id){return function(){openPdfNewTab(id);};})(p.id);
+    var db=document.createElement('button');db.className='btn btn-d btn-sm';db.textContent='Delete';db.onclick=(function(id){return function(){deletePdf(id);};})(p.id);
+    r.appendChild(vb);r.appendChild(nb);r.appendChild(db);row.appendChild(l);row.appendChild(r);el.appendChild(row);
+  });
+}
+function addPdf(){
+  var f=document.getElementById('pdfFile').files[0];
+  if(!f){toast('Choose a PDF first');return;}
+  if(f.type!=='application/pdf'){toast('Please choose a PDF file');return;}
+  var id=Date.now();
+  var reader=new FileReader();
+  reader.onload=async function(){
+    var okSave = await ssBig('upsc_pdf_'+id, reader.result); // base64 data URL, IndexedDB only (too big for localStorage)
+    if (!okSave) { toast('Could not save PDF — it may be too large or storage is full'); return; }
+    pdfs.push({id:id,name:f.name,size:f.size});
+    saveAll();rDocs();toast('PDF attached: '+f.name);
+    document.getElementById('pdfFile').value='';
+  };
+  reader.onerror=function(){toast('Could not read file');};
+  reader.readAsDataURL(f);
+}
+var _curPdfUrl=null;
+function dataURLtoBlob(dataurl){
+  if(typeof dataurl!=='string'||dataurl.indexOf('data:')!==0||dataurl.indexOf(',')<0){
+    throw new Error('Stored PDF data is not in the expected format');
+  }
+  var parts=dataurl.split(',');
+  var mimeMatch=parts[0].match(/:(.*?);/);
+  var mime=mimeMatch?mimeMatch[1]:'application/pdf';
+  var bin=atob(parts[1]);
+  var arr=new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+  return new Blob([arr],{type:mime});
+}
+async function viewPdf(id){
+  var meta=pdfs.find(function(p){return p.id===id;});if(!meta)return;
+  var data=await sgBig('upsc_pdf_'+id, null);
+  if(!data){toast('Could not load PDF');return;}
+  toast('Loading PDF...');
+  // Chrome's built-in PDF viewer often shows a blank page for huge data: URIs
+  // inside an <iframe>. Converting to a Blob URL fixes that reliably.
+  if(_curPdfUrl){URL.revokeObjectURL(_curPdfUrl);_curPdfUrl=null;}
+  try{
+    var blob=dataURLtoBlob(data);
+    _curPdfUrl=URL.createObjectURL(blob);
+    document.getElementById('pdfViewTitle').textContent=meta.name;
+    document.getElementById('pdfFrame').src=_curPdfUrl;
+    document.getElementById('pdfViewerCard').style.display='block';
+    document.getElementById('pdfViewerCard').scrollIntoView({behavior:'smooth'});
+  }catch(e){console.error(e);toast('Could not render this PDF — try opening it in a new tab instead');}
+}
+async function openPdfNewTab(id){
+  var meta=pdfs.find(function(p){return p.id===id;});if(!meta)return;
+  var data=await sgBig('upsc_pdf_'+id, null);
+  if(!data){toast('Could not load PDF');return;}
+  try{
+    var blob=dataURLtoBlob(data);
+    var url=URL.createObjectURL(blob);
+    window.open(url,'_blank');
+  }catch(e){console.error(e);toast('Could not open this PDF');}
+}
+function closePdfView(){
+  document.getElementById('pdfViewerCard').style.display='none';
+  document.getElementById('pdfFrame').src='';
+  if(_curPdfUrl){URL.revokeObjectURL(_curPdfUrl);_curPdfUrl=null;}
+}
+function deletePdf(id){
+  customConfirm('Delete this PDF?', async function(){
+    pdfs=pdfs.filter(function(p){return p.id!==id;});
+    try{await idbSet('upsc_pdf_'+id, null);}catch(e){}
+    saveAll();rDocs();closePdfView();toast('PDF deleted');
+  });
+}
+async function exportBackup(){
+  var data={
+    exportedAt:new Date().toISOString(), version:1,
+    logs:logs, llogs:llogs, mocks:mocks, checks:checks, phase:phase, lc:lc,
+    speeds:speeds, errs:errs, planSecs:planSecs, PHS:PHS, LT:LT, CK:CK,
+    pdfMeta:pdfs, pdfData:{}
+  };
+  for(var i=0;i<pdfs.length;i++){
+    var d=await sgBig('upsc_pdf_'+pdfs[i].id, null);
+    if(d) data.pdfData[pdfs[i].id]=d;
+  }
+  var blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='air1-tracker-backup-'+today()+'.json';a.click();
+  toast('Backup exported — save this file into your git folder');
+}
+function importBackup(file){
+  if(!file){return;}
+  customConfirm('This will REPLACE all data currently on this device with the backup file. Continue?', function(){
+    var reader=new FileReader();
+    reader.onload=async function(){
+      try{
+        var data=JSON.parse(reader.result);
+        logs=data.logs||[];llogs=data.llogs||[];mocks=data.mocks||[];checks=data.checks||{};
+        phase=data.phase||0;lc=data.lc||{};speeds=data.speeds||[];errs=data.errs||[];
+        planSecs=data.planSecs||[];if(data.PHS)PHS=data.PHS;if(data.LT)LT=data.LT;if(data.CK)CK=data.CK;
+        pdfs=data.pdfMeta||[];
+        if(data.pdfData){for(var pid in data.pdfData){await ssBig('upsc_pdf_'+pid, data.pdfData[pid]);}}
+        await _doSave();
+        rDash();rDocs();toast('Backup imported successfully!');
+        document.getElementById('importFile').value='';
+      }catch(e){console.error(e);toast('Invalid backup file');}
+    };
+    reader.readAsText(file);
+  });
+}
+
+// ============================================================
+// INIT — async: load from persistent storage FIRST, then render
 // ============================================================
 (async function(){
-  // Bind setup guide link
-  var sl=document.getElementById('setupLink');
-  if(sl)sl.addEventListener('click',function(e){e.preventDefault();showSetupGuide();});
+  var lm = document.getElementById('loadMsg');
+  var overlay = document.getElementById('loadOverlay');
+  try {
+    if(lm) lm.textContent = 'Loading your study data...';
+    await load();
+    if(lm) lm.textContent = 'Restoring your session...';
 
-  // Check if Firebase config was saved previously
-  var savedConfig = null;
-  try { var raw=localStorage.getItem('air1_fb_config'); if(raw) savedConfig=JSON.parse(raw); } catch(e){}
+    // Set dates
+    var t = today();
+    ['lgDate','loopDate','mkDate','spDate','errDate'].forEach(function(id){
+      var el=document.getElementById(id);if(el)el.value=t;
+    });
 
-  if (savedConfig) {
-    // Config exists — init Firebase and wait for auth state
-    try {
-      var user = await initFirebase(savedConfig);
-      if (user) {
-        // Already signed in — go straight to app
-        await onUserSignedIn(user);
-        return;
-      }
-      // Config good but not signed in — show login
-      document.getElementById('loginOverlay').style.display='flex';
-      // Set up auth state listener for when they sign in
-      var { onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
-      onAuthStateChanged(window._fbAuth, async function(u){ if(u) await onUserSignedIn(u); });
-    } catch(e) {
-      console.warn('Firebase init failed:', e);
-      document.getElementById('loginOverlay').style.display='flex';
-    }
-  } else {
-    // No config yet — show login screen
-    document.getElementById('loginOverlay').style.display='flex';
+    // Header date
+    var hd=document.getElementById('hDate');
+    if(hd)hd.textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+
+    // Phase dropdowns
+    var ap=document.getElementById('actPhase');if(ap)ap.value=phase;
+    var mkp=document.getElementById('mkPhase');if(mkp)mkp.value='Phase '+phase;
+    var lgp=document.getElementById('lgPhase');if(lgp)lgp.value='Phase '+phase;
+    var ep=document.getElementById('errPhase');if(ep)ep.value='Phase '+phase;
+
+    // Quote
+    quoteIdx=Math.floor(Math.random()*QUOTES.length);
+    rQuote();
+
+    // Render dashboard
+    rDash();
+    rWeekSum();
+
+    // Hide overlay
+    if(overlay) overlay.style.display='none';
+
+  } catch(err) {
+    console.error('Init error:', err);
+    if(lm) lm.textContent = 'Error loading data. Please refresh.';
+    // Still hide overlay after 2s so UI is accessible
+    setTimeout(function(){ if(overlay) overlay.style.display='none'; }, 2000);
   }
 })();
 </script>
