@@ -1486,7 +1486,7 @@ function rPhases(){
     var row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:6px;flex-wrap:wrap';
     var ni=document.createElement('input');ni.type='text';ni.value=p.n;
     ni.style.cssText='background:transparent;border:none;border-bottom:1px dashed var(--border);color:var(--text);font-family:var(--mono);font-size:11px;font-weight:500;outline:none;min-width:180px;flex:1;padding:1px 2px';
-    ni.addEventListener('change',(function(idx,inp){return function(){PHS[idx].n=inp.value;saveAll();toast('Updated');};})(i,ni));
+    ni.addEventListener('change',(function(idx,inp){return function(){PHS[idx].n=inp.value;saveAll();refreshPhaseSelects();toast('Updated');};})(i,ni));
     var badge=document.createElement('span');badge.className='tls '+(st==='done'?'s-done':st==='cur'?'s-cur':'s-fut');
     badge.textContent=st==='done'?'Complete':st==='cur'?'Active':'Upcoming';
     row.appendChild(ni);row.appendChild(badge);
