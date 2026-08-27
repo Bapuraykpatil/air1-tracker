@@ -370,7 +370,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
       <div class="frow">
         <div class="fg" style="flex:0 0 120px"><label>Date</label><input type="date" id="lgDate"></div>
         <div class="fg" style="flex:0 0 100px"><label>Phase</label>
-          <select id="lgPhase"><option>Phase 0</option><option>Phase 1</option><option>Phase 2</option><option>Phase 3</option><option>Phase 4</option><option>Phase 5</option><option>Phase 6</option><option>Phase 7</option><option>Phase 8</option></select>
+          <select id="lgPhase"></select>
         </div>
         <div class="fg" style="flex:0 0 80px"><label>Hours</label><input type="number" id="lgHrs" min="0" max="12" step=".5" value="5"></div>
       </div>
@@ -424,17 +424,11 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 <div class="sec" id="tab-phases">
   <div class="g2" style="margin-bottom:12px">
     <div class="card"><div class="ctitle">Active Phase</div>
-      <div class="fg"><label>Set Current Phase</label><select id="actPhase" onchange="savePhase()">
-        <option value="0">Phase 0 - Pre-Foundation</option><option value="1">Phase 1 - GS2 Foundation</option>
-        <option value="2">Phase 2 - GS1 Foundation</option><option value="3">Phase 3 - GS3 Foundation</option>
-        <option value="4">Phase 4 - GS4 + Integration</option><option value="5">Phase 5 - Final Loop Rotation</option>
-        <option value="6">Phase 6 - Prelims War</option><option value="7">Phase 7 - Mains AIR 1 Sprint</option>
-        <option value="8">Phase 8 - Interview</option>
-      </select></div>
+      <div class="fg"><label>Set Current Phase</label><select id="actPhase" onchange="savePhase()"></select></div>
     </div>
     <div class="card"><div class="ctitle">Overall Journey</div><div id="overallProg"></div></div>
   </div>
-  <div class="card"><div class="ctitle">Phase Timeline</div><div class="tl" id="phaseTl"></div></div>
+  <div class="card"><div class="ctitle">Phase Timeline <button class="btn btn-sm" onclick="addPhase()">+ Add Phase</button></div><div class="tl" id="phaseTl"></div></div>
   <div class="card">
     <div class="ctitle">Loop Targets Per Subject</div>
     <div id="ltGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px"></div>
@@ -462,7 +456,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
       <div class="fg" style="flex:0 0 110px"><label>Paper</label><select id="mkType"><option>GS1</option><option>GS2</option><option>GS3</option><option>GS4</option><option>Anthro P1</option><option>Anthro P2</option><option>Prelims</option><option>Full Mains</option><option>CSAT</option><option>Essay</option></select></div>
       <div class="fg" style="flex:0 0 80px"><label>Score</label><input type="number" id="mkScore" min="0" max="500"></div>
       <div class="fg" style="flex:0 0 80px"><label>Out of</label><input type="number" id="mkOf" value="250"></div>
-      <div class="fg" style="flex:0 0 85px"><label>Phase</label><select id="mkPhase"><option>Phase 0</option><option>Phase 1</option><option>Phase 2</option><option>Phase 3</option><option>Phase 4</option><option>Phase 5</option><option>Phase 6</option><option>Phase 7</option><option>Phase 8</option></select></div>
+      <div class="fg" style="flex:0 0 85px"><label>Phase</label><select id="mkPhase"></select></div>
       <div class="fg"><label>Notes</label><input type="text" id="mkNotes" placeholder="Weak areas..."></div>
       <div class="fg" style="flex:0 0 auto;justify-content:flex-end"><label>&nbsp;</label><button class="btn" onclick="saveMock()">Add</button></div>
     </div>
@@ -494,7 +488,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
       <div class="fg" style="flex:0 0 105px"><label>Subject</label><select id="errSubj"><option>Anthropology</option><option>GS1 History</option><option>GS1 Geography</option><option>GS1 Society</option><option>GS2 Polity</option><option>GS2 Governance</option><option>GS2 IR</option><option>GS3 Economy</option><option>GS3 Environment</option><option>GS3 S&T</option><option>GS3 Security</option><option>GS4 Ethics</option><option>CSAT</option><option>Prelims</option></select></div>
       <div class="fg" style="flex:0 0 80px"><label>Category</label><select id="errCat"><option value="A">A - Concept</option><option value="B">B - CA Gap</option><option value="C">C - Silly</option><option value="D">D - Trap</option></select></div>
       <div class="fg" style="flex:0 0 80px"><label>Source</label><select id="errSrc"><option>Mock Test</option><option>PYQ Practice</option><option>Sectional Test</option><option>Answer Writing</option><option>Self Study</option></select></div>
-      <div class="fg" style="flex:0 0 80px"><label>Phase</label><select id="errPhase"><option>Phase 0</option><option>Phase 1</option><option>Phase 2</option><option>Phase 3</option><option>Phase 4</option><option>Phase 5</option><option>Phase 6</option><option>Phase 7</option><option>Phase 8</option></select></div>
+      <div class="fg" style="flex:0 0 80px"><label>Phase</label><select id="errPhase"></select></div>
     </div>
     <div class="frow">
       <div class="fg"><label>Topic / Question</label><input type="text" id="errTopic" placeholder="e.g. Preamble - confused FR vs DPSPs"></div>
@@ -574,7 +568,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div class="ctitle">Full Study Log <span id="histCnt" style="color:var(--t3);font-size:8px"></span></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px;align-items:center">
       <select id="fSubj" onchange="renderHist()" style="width:120px"><option value="">All Subjects</option><option>Anthropology</option><option>GS1</option><option>GS2</option><option>GS3</option><option>GS4</option><option>CSAT</option><option>CA</option><option>Essay</option></select>
-      <select id="fPhase" onchange="renderHist()" style="width:105px"><option value="">All Phases</option><option>Phase 0</option><option>Phase 1</option><option>Phase 2</option><option>Phase 3</option><option>Phase 4</option><option>Phase 5</option><option>Phase 6</option><option>Phase 7</option><option>Phase 8</option></select>
+      <select id="fPhase" onchange="renderHist()" style="width:105px"><option value="">All Phases</option></select>
       <input type="text" id="fSearch" oninput="renderHist()" placeholder="Search notes..." style="width:150px;font-size:10px;padding:4px 8px">
       <button class="btn btn-d btn-sm" onclick="clearAll()" style="margin-left:auto">Clear All Data</button>
     </div>
@@ -903,10 +897,7 @@ async function onUserSignedIn(user) {
   ['lgDate','loopDate','mkDate','spDate','errDate'].forEach(function(id){var el=document.getElementById(id);if(el)el.value=t;});
   var hd=document.getElementById('hDate');
   if(hd)hd.textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
-  var ap=document.getElementById('actPhase');if(ap)ap.value=phase;
-  var mkp=document.getElementById('mkPhase');if(mkp)mkp.value='Phase '+phase;
-  var lgp=document.getElementById('lgPhase');if(lgp)lgp.value='Phase '+phase;
-  var ep=document.getElementById('errPhase');if(ep)ep.value='Phase '+phase;
+  refreshPhaseSelects();
   quoteIdx=Math.floor(Math.random()*QUOTES.length);
   rQuote(); rDash(); rWeekSum();
   if(ov)ov.style.display='none';
@@ -931,11 +922,13 @@ async function load() {
   var jsEl = document.getElementById('jsDate');
   if (jsEl) jsEl.value = journeyStart;
   var ph  = await sg(KPH, null);
-  if (ph && ph.length === 9) PHS = ph;
+  if (ph && ph.length) PHS = ph;
   var lt  = await sg(KLT, null);
   if (lt) LT = lt;
   var ck  = await sg(KCK, null);
   if (ck && ck.length) CK = ck;
+  if (phase >= PHS.length) phase = PHS.length - 1;
+  if (phase < 0) phase = 0;
 }
 
 // Debounced save — batches rapid back-to-back mutations into one write
@@ -1483,8 +1476,8 @@ function delLoop(id){llogs=llogs.filter(function(l){return l.id!==id;});saveAll(
 function rPhases(){
   var sel=document.getElementById('actPhase');if(sel)sel.value=phase;
   document.getElementById('hPhase').textContent='PHASE '+phase;
-  var pct=Math.round(phase/8*100);
-  var op=document.getElementById('overallProg');if(op)op.innerHTML='<div class="msr"><div class="msr-l">Journey</div><div class="msr-v">'+phase+'/8 phases</div></div><div style="margin-top:10px"><div class="sb-top"><span class="sb-lbl">Overall progress</span><span class="sb-val">'+pct+'%</span></div><div class="sb-track" style="height:6px;margin-top:4px"><div class="sb-fill" style="height:6px;width:'+pct+'%;background:var(--gold)"></div></div></div>';
+  var pct=PHS.length>1?Math.round(phase/(PHS.length-1)*100):0;
+  var op=document.getElementById('overallProg');if(op)op.innerHTML='<div class="msr"><div class="msr-l">Journey</div><div class="msr-v">'+phase+'/'+(PHS.length-1)+' phases</div></div><div style="margin-top:10px"><div class="sb-top"><span class="sb-lbl">Overall progress</span><span class="sb-val">'+pct+'%</span></div><div class="sb-track" style="height:6px;margin-top:4px"><div class="sb-fill" style="height:6px;width:'+pct+'%;background:var(--gold)"></div></div></div>';
   var tl=document.getElementById('phaseTl');if(!tl)return;tl.innerHTML='';
   PHS.forEach(function(p,i){
     var st=i<phase?'done':i===phase?'cur':'fut';
@@ -1497,6 +1490,11 @@ function rPhases(){
     var badge=document.createElement('span');badge.className='tls '+(st==='done'?'s-done':st==='cur'?'s-cur':'s-fut');
     badge.textContent=st==='done'?'Complete':st==='cur'?'Active':'Upcoming';
     row.appendChild(ni);row.appendChild(badge);
+    var ctrls=document.createElement('div');ctrls.style.cssText='display:flex;gap:3px;flex-shrink:0;margin-left:auto';
+    var upb=document.createElement('button');upb.className='btn btn-ghost btn-sm';upb.textContent='↑';upb.title='Move up';upb.addEventListener('click',(function(idx){return function(){movePhase(idx,-1);};})(i));
+    var dnb=document.createElement('button');dnb.className='btn btn-ghost btn-sm';dnb.textContent='↓';dnb.title='Move down';dnb.addEventListener('click',(function(idx){return function(){movePhase(idx,1);};})(i));
+    var delb=document.createElement('button');delb.className='btn btn-d btn-sm';delb.textContent='x';delb.title='Delete phase';delb.addEventListener('click',(function(idx){return function(){deletePhase(idx);};})(i));
+    ctrls.appendChild(upb);ctrls.appendChild(dnb);ctrls.appendChild(delb);row.appendChild(ctrls);
     var drow=document.createElement('div');drow.style.cssText='display:flex;gap:8px;margin-top:3px;flex-wrap:wrap';
     var di=document.createElement('input');di.type='text';di.value=p.d;di.placeholder='Date range';
     di.style.cssText='background:transparent;border:none;border-bottom:1px dashed var(--border);color:var(--t3);font-family:var(--mono);font-size:8px;outline:none;width:160px;padding:1px 2px';
@@ -1509,6 +1507,62 @@ function rPhases(){
   });
   var ltg=document.getElementById('ltGrid');if(ltg){ltg.innerHTML='';Object.keys(LT).forEach(function(s){var c=document.createElement('div');c.style.cssText='background:var(--bg4);border:1px solid var(--border);border-radius:4px;padding:10px 12px';var l=document.createElement('div');l.style.cssText='font-family:var(--mono);font-size:9px;color:var(--t3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;display:flex;justify-content:space-between;align-items:center';var lt2=document.createElement('span');lt2.textContent=s;l.appendChild(lt2);var del=document.createElement('span');del.textContent='✕';del.style.cssText='cursor:pointer;color:var(--t3)';del.title='Remove subject';del.addEventListener('click',(function(subj){return function(){removeLoopSubject(subj);};})(s));l.appendChild(del);var inp=document.createElement('input');inp.type='number';inp.min='1';inp.max='999';inp.value=LT[s];inp.style.cssText='width:60px;font-size:18px;font-weight:700;color:var(--gold2);text-align:center;background:var(--bg5);border:1px solid var(--border);border-radius:4px;padding:4px;font-family:var(--mono)';inp.addEventListener('change',(function(subj,inp2){return function(){var v=+inp2.value;if(v>=1){LT[subj]=v;saveAll();rLoops();toast(subj+' loops: '+v);}}})(s,inp));var sp=document.createElement('span');sp.style.cssText='font-family:var(--mono);font-size:9px;color:var(--t3);margin-left:6px';sp.textContent='loops (no limit)';var row=document.createElement('div');row.style.display='flex';row.style.alignItems='center';row.appendChild(inp);row.appendChild(sp);c.appendChild(l);c.appendChild(row);ltg.appendChild(c);});}
   var ce=document.getElementById('ckEditList');if(ce){ce.innerHTML='';CK.forEach(function(item,i){var row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--border)';var num=document.createElement('span');num.style.cssText='font-family:var(--mono);font-size:9px;color:var(--t3);width:18px;text-align:center;flex-shrink:0';num.textContent=i+1;var li=document.createElement('input');li.type='text';li.value=item.label;li.style.cssText='flex:1;background:var(--bg4);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 7px;outline:none';li.addEventListener('change',(function(idx,inp){return function(){CK[idx].label=inp.value;saveAll();}})(i,li));var ti=document.createElement('input');ti.type='text';ti.value=item.time;ti.style.cssText='width:70px;background:var(--bg4);border:1px solid var(--border);border-radius:3px;color:var(--gold2);font-family:var(--mono);font-size:10px;padding:4px 7px;outline:none;text-align:center';ti.addEventListener('change',(function(idx,inp){return function(){CK[idx].time=inp.value;saveAll();}})(i,ti));var del=document.createElement('button');del.className='btn btn-d btn-sm';del.textContent='x';del.addEventListener('click',(function(idx){return function(){if(CK.length<=1){toast('Cannot remove last!');return;}CK.splice(idx,1);saveAll();rPhases();}})(i));row.appendChild(num);row.appendChild(li);row.appendChild(ti);row.appendChild(del);ce.appendChild(row);});}
+  refreshPhaseSelects();
+}
+
+// Every part of the app that references a phase (Log Entry, Mock Scores,
+// Error Log, History filter, Active Phase picker) pulls its options from
+// PHS live, so adding/renaming/reordering/deleting a phase here updates
+// everywhere else automatically — nothing to keep in sync by hand.
+function refreshPhaseSelects(){
+  var shortName=function(p){return (p.n||'').replace(/^Phase\s*\d+\s*-\s*/i,'');};
+  // Numeric-value select (Active Phase picker)
+  var ap=document.getElementById('actPhase');
+  if(ap){
+    var curApVal=phase;
+    ap.innerHTML=PHS.map(function(p,i){return '<option value="'+i+'">Phase '+i+' - '+esc(shortName(p))+'</option>';}).join('');
+    ap.value=Math.max(0,Math.min(curApVal,PHS.length-1));
+  }
+  // Text-value selects used to tag log entries, mocks, errors ("Phase 0" etc.)
+  ['lgPhase','mkPhase','errPhase'].forEach(function(id){
+    var el=document.getElementById(id);if(!el)return;
+    var cur=el.value;
+    el.innerHTML=PHS.map(function(p,i){return '<option value="Phase '+i+'">Phase '+i+' - '+esc(shortName(p))+'</option>';}).join('');
+    var opts=Array.prototype.map.call(el.options,function(o){return o.value;});
+    el.value=opts.indexOf(cur)>=0?cur:('Phase '+Math.max(0,Math.min(phase,PHS.length-1)));
+  });
+  // History filter select (keeps "All Phases" as first option)
+  var fp=document.getElementById('fPhase');
+  if(fp){
+    var curFp=fp.value;
+    fp.innerHTML='<option value="">All Phases</option>'+PHS.map(function(p,i){return '<option value="Phase '+i+'">Phase '+i+' - '+esc(shortName(p))+'</option>';}).join('');
+    var fopts=Array.prototype.map.call(fp.options,function(o){return o.value;});
+    fp.value=fopts.indexOf(curFp)>=0?curFp:'';
+  }
+}
+function addPhase(){
+  customPrompt('Name for the new phase (e.g. "Phase 9 - Revision Sprint"):', 'Phase '+PHS.length+' - New Phase', function(name){
+    if(!name)return;
+    PHS.push({n:name.trim(),d:'',dur:''});
+    saveAll();rPhases();toast('Phase added');
+  });
+}
+function movePhase(i,dir){
+  var j=i+dir;
+  if(j<0||j>=PHS.length)return;
+  var t=PHS[i];PHS[i]=PHS[j];PHS[j]=t;
+  // Keep the "active phase" pointer following the phase it was set to, not the slot
+  if(phase===i)phase=j; else if(phase===j)phase=i;
+  saveAll();rPhases();
+}
+function deletePhase(i){
+  if(PHS.length<=1){toast('Keep at least one phase!');return;}
+  customConfirm('Delete "'+PHS[i].n+'"? Log entries already tagged with this phase number keep their tag, but it will no longer appear in dropdowns.', function(){
+    PHS.splice(i,1);
+    if(phase>=PHS.length)phase=PHS.length-1;
+    else if(phase>i)phase--;
+    saveAll();rPhases();document.getElementById('hPhase').textContent='PHASE '+phase;toast('Phase deleted');
+  });
 }
 function savePhase(){phase=parseInt(document.getElementById('actPhase').value);saveAll();rPhases();document.getElementById('hPhase').textContent='PHASE '+phase;toast('Phase updated');}
 function addCkItem(){CK.push({id:'ck_'+Date.now(),label:'New task',time:'00:00'});saveAll();rPhases();}
