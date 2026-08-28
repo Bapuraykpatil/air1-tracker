@@ -227,6 +227,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
   <button class="nb" onclick="showTab('log',this)">Log Entry</button>
   <button class="nb" onclick="showTab('loops',this)">Loops</button>
   <button class="nb" onclick="showTab('phases',this)">Phases</button>
+  <button class="nb" onclick="showTab('syllabus',this)">Syllabus</button>
   <button class="nb" onclick="showTab('mocks',this)">Mock Scores</button>
   <button class="nb" onclick="showTab('errors',this)">Error Log</button>
   <button class="nb" onclick="showTab('plan',this)">My Plan</button>
@@ -449,6 +450,19 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
   </div>
 </div>
 
+<!-- SYLLABUS COVERAGE -->
+<div class="sec" id="tab-syllabus">
+  <div class="card" style="border-color:var(--gb)">
+    <div class="ctitle">Why this matters</div>
+    <div style="font-family:var(--mono);font-size:9.5px;color:var(--t2);line-height:1.7">
+      Hours and answer counts measure effort. This measures the thing that actually decides your score: how much of the syllabus you've actually <b style="color:var(--gold2)">covered, and re-covered</b>. Click a topic's status badge to cycle it through Pending → Reading → Done → Revised.
+    </div>
+  </div>
+  <div class="g4" id="sylStats"></div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn btn-sm" onclick="addSylSubject()">+ Add Subject</button></div>
+  <div id="sylList"></div>
+</div>
+
 <!-- MOCK SCORES -->
 <div class="sec" id="tab-mocks">
   <div class="g4" id="mockStats"></div>
@@ -627,6 +641,17 @@ var CK_DEF=[
   {id:'sleep',  label:'Sleep by 9:30 PM',                   time:'9:30 PM'}
 ];
 var CK=CK_DEF.map(function(i){return{id:i.id,label:i.label,time:i.time};});
+var SYL_DEF={
+  'GS1':['Ancient History','Medieval History','Modern History (Freedom Struggle)','Post-Independence Consolidation','Art & Culture','Indian Society','World History','Geography - Physical','Geography - Human','Geography - Indian','Geography - World'],
+  'GS2':['Indian Constitution & Polity','Parliament & State Legislatures','Executive & Judiciary','Governance & Transparency','Social Justice & Welfare Schemes','International Relations','Government Policies & Interventions'],
+  'GS3':['Indian Economy - Growth & Development','Agriculture & Food Processing','Science & Technology','Environment & Ecology','Biodiversity & Climate Change','Disaster Management','Internal Security'],
+  'GS4':['Ethics & Human Interface','Attitude','Aptitude & Foundational Values','Emotional Intelligence','Contributions of Thinkers & Philosophers','Public/Civil Service Values','Probity in Governance','Case Studies'],
+  'Anthropology':['Physical Anthropology','Archaeological Anthropology','Social-Cultural Anthropology Theory','Anthropological Thinkers','Indian Anthropology','Tribal Studies & PVTGs','Applied Anthropology'],
+  'CSAT':['Reading Comprehension','Logical Reasoning','Analytical Ability','Decision Making','Basic Numeracy','Data Interpretation'],
+  'Essay':['Philosophical Essays','Social Issues','Economy & Development Essays','Polity & Governance Essays','Practice Essay Writing']
+};
+var SYL={}; // {subject: [{id, name, status}]} — status: pending|reading|done|revised
+var KSY='upsc_syl';
 var SUBJS=['Anthropology','GS1','GS2','GS3','GS4','CSAT','CA','Essay'];
 var SCOLS={Anthropology:'#c9a84c',GS1:'#4a90d9',GS2:'#3fb97a',GS3:'#e05565',GS4:'#8b6fd4',CSAT:'#d4834a',CA:'#4ab8d9',Essay:'#d4a84a'};
 var MCOLS={GS1:'#4a90d9',GS2:'#c9a84c',GS3:'#3fb97a',GS4:'#8b6fd4','Anthro P1':'#e05565','Anthro P2':'#e08065',Prelims:'#4ab8d9',Essay:'#d4a84a','Full Mains':'#d4834a',CSAT:'#4a90d9'};
@@ -935,6 +960,16 @@ async function load() {
   if (lt) LT = lt;
   var ck  = await sg(KCK, null);
   if (ck && ck.length) CK = ck;
+  var syl = await sg(KSY, null);
+  if (syl && Object.keys(syl).length) {
+    SYL = syl;
+  } else {
+    // First run — seed with a reasonable default topic breakdown per subject.
+    // Fully editable/removable afterwards, same as everything else here.
+    Object.keys(SYL_DEF).forEach(function(subj){
+      SYL[subj] = SYL_DEF[subj].map(function(name, i){ return {id: subj+'_'+i, name: name, status: 'pending'}; });
+    });
+  }
   if (phase >= PHS.length) phase = PHS.length - 1;
   if (phase < 0) phase = 0;
 }
@@ -964,6 +999,7 @@ async function _doSave() {
       ss(KLT,  LT),
       ss(KCK,  CK),
       ss(KJS,  journeyStart),
+      ss(KSY,  SYL),
     ]);
   } catch(e) {
     console.error('Save error:', e);
@@ -1058,6 +1094,7 @@ function showTab(id,btn){
   if(id==='hist')rHist();
   if(id==='loops')rLoops();
   if(id==='phases')rPhases();
+  if(id==='syllabus')rSyllabus();
   if(id==='mocks')rMocks();
   if(id==='errors')rErrs();
   if(id==='plan')rPlan();
@@ -1254,10 +1291,14 @@ function rQuick(){
   var ta=logs.reduce(function(s,l){return s+(+l.answers||0);},0);
   var th=logs.reduce(function(s,l){return s+(+l.hours||0);},0);
   var el=document.getElementById('quickStats');if(!el)return;
+  var allTopics=[];Object.keys(SYL).forEach(function(s){allTopics=allTopics.concat(SYL[s]);});
+  var covDone=allTopics.filter(function(t){return t.status==='done'||t.status==='revised';}).length;
+  var covPct=allTopics.length?Math.round(covDone/allTopics.length*100):null;
   el.innerHTML='<div class="msr"><div class="msr-l">Answers/day</div><div class="msr-v">'+(logs.length?(ta/logs.length).toFixed(1):0)+'</div></div>'+
     '<div class="msr"><div class="msr-l">Hours/day</div><div class="msr-v">'+(logs.length?(th/logs.length).toFixed(1):0)+'h</div></div>'+
     '<div class="msr"><div class="msr-l">Streak</div><div class="msr-v" style="color:var(--green)">'+streak()+' days</div></div>'+
-    '<div class="msr"><div class="msr-l">Days logged</div><div class="msr-v">'+(logs.map(function(l){return l.date;}).filter(function(v,i,a){return a.indexOf(v)===i;}).length)+'</div></div>';
+    '<div class="msr"><div class="msr-l">Days logged</div><div class="msr-v">'+(logs.map(function(l){return l.date;}).filter(function(v,i,a){return a.indexOf(v)===i;}).length)+'</div></div>'+
+    (covPct!==null?'<div class="msr"><div class="msr-l">Syllabus Covered</div><div class="msr-v" style="color:'+(covPct>=80?'var(--green)':covPct>=50?'var(--gold2)':'var(--red)')+'">'+covPct+'%</div></div>':'');
 }
 function rQuote(){var q=QUOTES[quoteIdx%QUOTES.length];var el=document.getElementById('quoteText');if(el)el.innerHTML='"'+q.q+'" <span style="color:var(--t3)">- '+q.a+'</span>';}
 function nextQuote(){quoteIdx++;rQuote();}
@@ -1618,6 +1659,100 @@ function addCkItem(){CK.push({id:'ck_'+Date.now(),label:'New task',time:'00:00'}
 function resetCk(){customConfirm('Reset checklist to default?', function(){CK=CK_DEF.map(function(i){return{id:i.id,label:i.label,time:i.time};});saveAll();rPhases();rCk();toast('Reset');});}
 
 // ============================================================
+// SYLLABUS COVERAGE — the thing that actually predicts your score.
+// Each topic cycles: pending -> reading -> done -> revised -> pending.
+// ============================================================
+var SYL_STATUSES=['pending','reading','done','revised'];
+var SYL_META={
+  pending:{label:'Pending',color:'var(--t3)',bg:'var(--bg5)'},
+  reading:{label:'Reading',color:'var(--blue)',bg:'var(--bbg)'},
+  done:{label:'Done',color:'var(--gold2)',bg:'var(--gdim)'},
+  revised:{label:'Revised',color:'var(--green)',bg:'var(--gbg)'}
+};
+function sylStats(topics){
+  var n=topics.length;
+  var done=topics.filter(function(t){return t.status==='done'||t.status==='revised';}).length;
+  var revised=topics.filter(function(t){return t.status==='revised';}).length;
+  return {n:n,done:done,revised:revised,pct:n?Math.round(done/n*100):0};
+}
+function rSyllabus(){
+  var subjects=Object.keys(SYL);
+  var totalTopics=0,totalDone=0,totalRevised=0;
+  subjects.forEach(function(s){var st=sylStats(SYL[s]);totalTopics+=st.n;totalDone+=st.done;totalRevised+=st.revised;});
+  var overallPct=totalTopics?Math.round(totalDone/totalTopics*100):0;
+  var revPct=totalTopics?Math.round(totalRevised/totalTopics*100):0;
+  var se=document.getElementById('sylStats');
+  if(se)se.innerHTML=
+    '<div class="stat"><div class="slbl">Overall Coverage</div><div class="sval" style="color:'+(overallPct>=80?'var(--green)':overallPct>=50?'var(--gold2)':'var(--red)')+'">'+overallPct+'<span style="font-size:12px;color:var(--t3)">%</span></div><div class="ssub">'+totalDone+'/'+totalTopics+' topics covered</div><div class="spbar"><div class="spbar-f" style="width:'+overallPct+'%"></div></div></div>'+
+    '<div class="stat"><div class="slbl">Revised At Least Once</div><div class="sval" style="color:var(--green)">'+revPct+'<span style="font-size:12px;color:var(--t3)">%</span></div><div class="ssub">'+totalRevised+' topics</div></div>'+
+    '<div class="stat"><div class="slbl">Subjects Tracked</div><div class="sval">'+subjects.length+'</div><div class="ssub">'+totalTopics+' total topics</div></div>'+
+    '<div class="stat"><div class="slbl">Untouched Topics</div><div class="sval" style="color:'+(totalTopics-totalDone>0?'var(--red)':'var(--green)')+'">'+(totalTopics-totalDone)+'</div><div class="ssub">still pending/reading</div></div>';
+
+  var list=document.getElementById('sylList');if(!list)return;list.innerHTML='';
+  subjects.forEach(function(subj){
+    var topics=SYL[subj];
+    var st=sylStats(topics);
+    var card=document.createElement('div');card.className='card';
+    var hdr=document.createElement('div');hdr.className='ctitle';
+    hdr.innerHTML='<span>'+esc(subj)+' <span class="ctv">'+st.done+'/'+st.n+' ('+st.pct+'%)</span></span>';
+    var hbtns=document.createElement('div');hbtns.style.cssText='display:flex;gap:5px';
+    var addTb=document.createElement('button');addTb.className='btn btn-sm';addTb.textContent='+ Topic';addTb.addEventListener('click',(function(s){return function(){addSylTopic(s);};})(subj));
+    var delSb=document.createElement('button');delSb.className='btn btn-d btn-sm';delSb.textContent='Remove Subject';delSb.addEventListener('click',(function(s){return function(){removeSylSubject(s);};})(subj));
+    hbtns.appendChild(addTb);hbtns.appendChild(delSb);hdr.appendChild(hbtns);
+    card.appendChild(hdr);
+    var bar=document.createElement('div');bar.className='spbar';bar.style.marginBottom='10px';
+    var barF=document.createElement('div');barF.className='spbar-f';barF.style.width=st.pct+'%';barF.style.background=st.pct>=80?'var(--green)':'var(--gold)';
+    bar.appendChild(barF);card.appendChild(bar);
+    topics.forEach(function(t){
+      var row=document.createElement('div');row.className='msr';
+      var l=document.createElement('div');l.className='msr-l';l.style.color='var(--text)';l.textContent=t.name;
+      var r=document.createElement('div');r.style.cssText='display:flex;align-items:center;gap:6px';
+      var meta=SYL_META[t.status]||SYL_META.pending;
+      var badge=document.createElement('span');badge.className='badge';badge.style.cssText='background:'+meta.bg+';color:'+meta.color+';border:1px solid '+meta.color+'44;cursor:pointer;padding:3px 9px;font-size:9px';
+      badge.textContent=meta.label;badge.title='Click to advance status';
+      badge.addEventListener('click',(function(s,id){return function(){cycleSylStatus(s,id);};})(subj,t.id));
+      var delT=document.createElement('span');delT.textContent='✕';delT.style.cssText='cursor:pointer;color:var(--t3);font-size:11px';delT.title='Remove topic';
+      delT.addEventListener('click',(function(s,id){return function(){removeSylTopic(s,id);};})(subj,t.id));
+      r.appendChild(badge);r.appendChild(delT);
+      row.appendChild(l);row.appendChild(r);card.appendChild(row);
+    });
+    if(!topics.length)card.innerHTML+='<div class="empty">No topics yet — click + Topic to add one</div>';
+    list.appendChild(card);
+  });
+  if(!subjects.length)list.innerHTML='<div class="empty">No subjects yet — click + Add Subject above</div>';
+}
+function cycleSylStatus(subj,id){
+  var t=(SYL[subj]||[]).find(function(x){return x.id===id;});if(!t)return;
+  var idx=SYL_STATUSES.indexOf(t.status);
+  t.status=SYL_STATUSES[(idx+1)%SYL_STATUSES.length];
+  saveAll();rSyllabus();
+}
+function addSylSubject(){
+  customPrompt('New subject name (e.g. "GS5", "Optional Paper 2"):','',function(name){
+    if(!name)return;name=name.trim();if(!name)return;
+    if(SYL[name]){toast('Subject already exists');return;}
+    SYL[name]=[];saveAll();rSyllabus();toast(name+' added — now add topics to it');
+  });
+}
+function removeSylSubject(subj){
+  customConfirm('Remove "'+subj+'" and all its topics from syllabus tracking?',function(){
+    delete SYL[subj];saveAll();rSyllabus();
+  });
+}
+function addSylTopic(subj){
+  customPrompt('Topic name to add under '+subj+':','',function(name){
+    if(!name)return;name=name.trim();if(!name)return;
+    SYL[subj]=SYL[subj]||[];
+    SYL[subj].push({id:subj+'_'+Date.now(),name:name,status:'pending'});
+    saveAll();rSyllabus();
+  });
+}
+function removeSylTopic(subj,id){
+  SYL[subj]=(SYL[subj]||[]).filter(function(t){return t.id!==id;});
+  saveAll();rSyllabus();
+}
+
+// ============================================================
 // MOCKS
 // ============================================================
 function rMocks(){
@@ -1864,7 +1999,7 @@ async function exportBackup(){
   var data={
     exportedAt:new Date().toISOString(), version:1,
     logs:logs, llogs:llogs, mocks:mocks, checks:checks, phase:phase, lc:lc,
-    speeds:speeds, errs:errs, planSecs:planSecs, PHS:PHS, LT:LT, CK:CK,
+    speeds:speeds, errs:errs, planSecs:planSecs, PHS:PHS, LT:LT, CK:CK, SYL:SYL,
     pdfMeta:pdfs, pdfData:{}
   };
   for(var i=0;i<pdfs.length;i++){
@@ -1887,7 +2022,7 @@ function importBackup(file){
         var data=JSON.parse(reader.result);
         logs=data.logs||[];llogs=data.llogs||[];mocks=data.mocks||[];checks=data.checks||{};
         phase=data.phase||0;lc=data.lc||{};speeds=data.speeds||[];errs=data.errs||[];
-        planSecs=data.planSecs||[];if(data.PHS)PHS=data.PHS;if(data.LT)LT=data.LT;if(data.CK)CK=data.CK;
+        planSecs=data.planSecs||[];if(data.PHS)PHS=data.PHS;if(data.LT)LT=data.LT;if(data.CK)CK=data.CK;if(data.SYL)SYL=data.SYL;
         pdfs=data.pdfMeta||[];
         if(data.pdfData){for(var pid in data.pdfData){await ssBig('upsc_pdf_'+pid, data.pdfData[pid]);}}
         await _doSave();
