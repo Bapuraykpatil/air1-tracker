@@ -247,6 +247,11 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div class="tttl">Today - <span id="todayLbl"></span> <span id="checkPct" style="color:var(--t3);font-size:8px"></span></div>
     <div id="dashChecklist"></div>
   </div>
+  <div id="backupReminder" style="display:none;align-items:center;gap:10px;background:var(--gdim);border:1px solid var(--gb);border-radius:var(--r);padding:9px 14px;margin-bottom:12px;font-family:var(--mono);font-size:9.5px;color:var(--gold2)">
+    <span class="brtext" style="flex:1"></span>
+    <button class="btn btn-sm" onclick="goToDocs()">Go to Documents</button>
+    <span style="cursor:pointer;color:var(--t3)" onclick="dismissBackupReminder()" title="Remind me later today">✕</span>
+  </div>
   <div id="quoteBar" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:9px 14px;margin-bottom:12px;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="nextQuote()">
     <div style="color:var(--gold);font-size:14px;flex-shrink:0">&ldquo;</div>
     <div id="quoteText" style="font-family:var(--mono);font-size:10px;color:var(--t2);flex:1;font-style:italic">Loading...</div>
@@ -273,6 +278,8 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
             <input type="date" id="cdDate" onchange="saveCD()" style="font-size:10px;padding:4px 7px;flex:1;min-width:120px">
           </div>
           <div id="cdLabel" style="font-family:var(--mono);font-size:8px;color:var(--t3);margin-top:4px"></div>
+          <div id="cdExpired" style="display:none;font-family:var(--mono);font-size:8.5px;color:var(--gold2);background:var(--gdim);border:1px solid var(--gb);border-radius:4px;padding:5px 8px;margin-top:5px;line-height:1.6"></div>
+          <div style="font-family:var(--mono);font-size:7.5px;color:var(--t3);margin-top:5px;line-height:1.5">Changing this date only moves the countdown target (e.g. Prelims → Mains). Your logs, phases, mocks, and history are never touched.</div>
           <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <div style="font-family:var(--mono);font-size:8px;color:var(--t3);white-space:nowrap">Journey start:</div>
             <input type="date" id="jsDate" onchange="saveJS()" value="2026-06-01" style="font-size:10px;padding:3px 6px;flex:1;min-width:120px;border-color:rgba(201,168,76,.2)">
@@ -586,10 +593,10 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 // ============================================================
 var KL='upsc_logs', KLL='upsc_ll', KM='upsc_mocks', KC='upsc_chk', KP='upsc_ph',
     KLC='upsc_lc', KSP='upsc_sp', KE='upsc_errs', KPN='upsc_plan', KCD='upsc_cd',
-    KPH='upsc_ph2', KLT='upsc_lt2', KCK='upsc_ck2', KJS='upsc_js';
+    KPH='upsc_ph2', KLT='upsc_lt2', KCK='upsc_ck2', KJS='upsc_js', KLBD='upsc_lbd';
 
 var logs=[], llogs=[], mocks=[], checks={}, phase=0, lc={}, speeds=[], errs=[],
-    planSecs=[], selSubj=[];
+    planSecs=[], selSubj=[], lastBackupDate=null;
 var journeyStart='2026-06-01'; // default; overridden by saved value
 var charts={}, hmM=1, mf='All', hp=8, quoteIdx=0, colIdx={};
 var editingId=null; // ID of log entry being edited (null = new entry mode)
@@ -921,6 +928,7 @@ async function load() {
   journeyStart = jsV || '2026-06-01';
   var jsEl = document.getElementById('jsDate');
   if (jsEl) jsEl.value = journeyStart;
+  lastBackupDate = await sg(KLBD, null);
   var ph  = await sg(KPH, null);
   if (ph && ph.length) PHS = ph;
   var lt  = await sg(KLT, null);
@@ -1084,8 +1092,37 @@ function rDash(){
   mkC('cWeekAns','bar',{labels:wks.map(function(k){var p=k.split('-');return p[2]+'/'+p[1];}),datasets:[{data:wv,backgroundColor:wv.map(function(_,i){return i===wv.length-1?'rgba(201,168,76,.9)':'rgba(201,168,76,.22)';}),borderRadius:3,borderSkipped:false}]},{scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:'rgba(255,255,255,.03)'}}}});
   var lp=document.getElementById('dashLoops');if(lp){lp.innerHTML='';Object.keys(LT).forEach(function(s){var t=LT[s];var c=lc[s]||0;var pct=Math.round(c/t*100);lp.innerHTML+='<div class="msr"><div class="msr-l">'+s+'</div><div style="display:flex;align-items:center;gap:8px"><div style="width:80px;background:var(--bg5);border-radius:2px;height:3px;overflow:hidden"><div style="width:'+pct+'%;height:3px;background:var(--gold);border-radius:2px"></div></div><div class="msr-v">'+c+'/'+t+'</div></div></div>';});}
   rHm();
+  checkBackupReminder();
   var rec=logs.slice().sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,7);
   si('recentTb').innerHTML=rec.length?rec.map(function(l){return'<tr><td>'+fD(l.date)+'</td><td>'+(l.subjects||[]).map(function(s){return'<span class="badge bg" style="margin-right:2px">'+s+'</span>';}).join('')+'</td><td style="color:var(--t2)">'+(l.hours||0)+'h</td><td style="color:var(--gold2)">'+(l.answers||0)+'</td><td style="font-family:var(--mono);color:'+sc(l.score,l.scoreOf)+'">'+scLbl(l.score,l.scoreOf)+'</td><td style="color:var(--green)">'+(l.essays||0)+'</td><td style="color:var(--blue)">'+(l.cases||0)+'</td><td style="color:var(--t3);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(l.notes||'')+'</td><td><button class="btn btn-sm" style="background:rgba(74,144,217,.1);border-color:var(--bbd);color:var(--blue)" onclick="editLog('+l.id+')">edit</button></td></tr>';}).join(''):'<tr><td colspan="9" class="empty">No entries yet</td></tr>';
+}
+
+// A journey this long (many months, even years) shouldn't rely on you
+// remembering to back up. Nudge every ~30 days if no export has happened,
+// without being annoying — dismissing just snoozes it for today's session.
+function goToDocs(){
+  var target=null;
+  document.querySelectorAll('.nb').forEach(function(b){if(b.textContent.trim()==='Documents')target=b;});
+  showTab('docs', target);
+}
+function dismissBackupReminder(){
+  var el=document.getElementById('backupReminder');if(el)el.style.display='none';
+  try{sessionStorage.setItem('air1_backup_dismissed_'+today(),'1');}catch(e){}
+}
+function checkBackupReminder(){
+  var el=document.getElementById('backupReminder');if(!el)return;
+  var dismissedToday=false;
+  try{dismissedToday=sessionStorage.getItem('air1_backup_dismissed_'+today())==='1';}catch(e){}
+  if(dismissedToday){el.style.display='none';return;}
+  if(logs.length<5){el.style.display='none';return;} // not enough data yet to worry about
+  var daysSince=lastBackupDate?Math.floor((new Date(today())-new Date(lastBackupDate))/(1000*60*60*24)):9999;
+  if(daysSince>=30){
+    el.style.display='flex';
+    var txt=el.querySelector('.brtext');
+    if(txt)txt.textContent=lastBackupDate?('You last exported a backup '+daysSince+' days ago ('+fD(lastBackupDate)+'). Over a multi-month prep, it\'s worth keeping a fresh copy.'):'You\'ve never exported a backup yet. With months of daily logs ahead, it\'s worth having one safety copy.';
+  } else {
+    el.style.display='none';
+  }
 }
 
 function rCk(){
@@ -1200,6 +1237,18 @@ function updateCD(){
   var mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   document.getElementById('cdLabel').textContent='Target: '+target.getDate()+' '+mn[target.getMonth()]+' '+target.getFullYear();
   document.getElementById('cdDays').style.color=diff<60?'var(--red)':diff<180?'var(--gold2)':'var(--green)';
+  // Once the target date has passed, prompt to move on to the next milestone
+  // (e.g. Prelims → Mains) instead of leaving a stale, expired countdown.
+  // This never touches logs/phases/history — only the countdown's own date.
+  var expEl=document.getElementById('cdExpired');
+  if(expEl){
+    if(diff<=0){
+      expEl.style.display='block';
+      expEl.innerHTML='This date has passed. All your logged progress is safe and untouched — pick your next milestone above (e.g. Mains) to keep the countdown going. <span style="text-decoration:underline;cursor:pointer" onclick="document.getElementById(\'cdPreset\').focus()">Choose from presets ↑</span>';
+    } else {
+      expEl.style.display='none';
+    }
+  }
 }
 function rQuick(){
   var ta=logs.reduce(function(s,l){return s+(+l.answers||0);},0);
@@ -1824,6 +1873,9 @@ async function exportBackup(){
   }
   var blob=new Blob([JSON.stringify(data)],{type:'application/json'});
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='air1-tracker-backup-'+today()+'.json';a.click();
+  lastBackupDate=today();
+  await ss(KLBD, lastBackupDate);
+  var rem=document.getElementById('backupReminder');if(rem)rem.style.display='none';
   toast('Backup exported');
 }
 function importBackup(file){
