@@ -248,6 +248,10 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div class="tttl">Today - <span id="todayLbl"></span> <span id="checkPct" style="color:var(--t3);font-size:8px"></span></div>
     <div id="dashChecklist"></div>
   </div>
+  <div id="dashDueRevisions" style="display:none;background:var(--rbg);border:1px solid var(--rbd);border-radius:var(--r);padding:9px 14px;margin-bottom:12px">
+    <div style="font-family:var(--mono);font-size:9px;color:var(--red);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">⚠ Due For Revision Today</div>
+    <div id="dashDueList"></div>
+  </div>
   <div id="backupReminder" style="display:none;align-items:center;gap:10px;background:var(--gdim);border:1px solid var(--gb);border-radius:var(--r);padding:9px 14px;margin-bottom:12px;font-family:var(--mono);font-size:9.5px;color:var(--gold2)">
     <span class="brtext" style="flex:1"></span>
     <button class="btn btn-sm" onclick="goToDocs()">Go to Documents</button>
@@ -455,11 +459,18 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
   <div class="card" style="border-color:var(--gb)">
     <div class="ctitle">Why this matters</div>
     <div style="font-family:var(--mono);font-size:9.5px;color:var(--t2);line-height:1.7">
-      Hours and answer counts measure effort. This measures the thing that actually decides your score: how much of the syllabus you've actually <b style="color:var(--gold2)">covered, and re-covered</b>. Click a topic's status badge to cycle it through Pending → Reading → Done → Revised.
+      Hours and answer counts measure effort. This measures the thing that actually decides your score: how much of the syllabus you've actually <b style="color:var(--gold2)">covered, and re-covered</b>. Click a topic to mark it Pending → Reading → Covered. Once Covered, revisions auto-schedule at <b style="color:var(--gold2)">+1, +4, +7, +15, +30, +60, +90 days</b> — whatever's due shows up in red below and on your Dashboard every day.
     </div>
   </div>
   <div class="g4" id="sylStats"></div>
-  <div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn btn-sm" onclick="addSylSubject()">+ Add Subject</button></div>
+  <div class="card" style="border-color:var(--rbd)">
+    <div class="ctitle">Due For Revision Today <span class="ctv">check this every day</span></div>
+    <div id="sylDueList"></div>
+  </div>
+  <div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:8px">
+    <button class="btn btn-ghost btn-sm" onclick="resetSyllabusToOfficial()">Reset to Official Syllabus</button>
+    <button class="btn btn-sm" onclick="addSylSubject()">+ Add Paper</button>
+  </div>
   <div id="sylList"></div>
 </div>
 
@@ -642,16 +653,22 @@ var CK_DEF=[
 ];
 var CK=CK_DEF.map(function(i){return{id:i.id,label:i.label,time:i.time};});
 var SYL_DEF={
-  'GS1':['Ancient History','Medieval History','Modern History (Freedom Struggle)','Post-Independence Consolidation','Art & Culture','Indian Society','World History','Geography - Physical','Geography - Human','Geography - Indian','Geography - World'],
-  'GS2':['Indian Constitution & Polity','Parliament & State Legislatures','Executive & Judiciary','Governance & Transparency','Social Justice & Welfare Schemes','International Relations','Government Policies & Interventions'],
-  'GS3':['Indian Economy - Growth & Development','Agriculture & Food Processing','Science & Technology','Environment & Ecology','Biodiversity & Climate Change','Disaster Management','Internal Security'],
-  'GS4':['Ethics & Human Interface','Attitude','Aptitude & Foundational Values','Emotional Intelligence','Contributions of Thinkers & Philosophers','Public/Civil Service Values','Probity in Governance','Case Studies'],
-  'Anthropology':['Physical Anthropology','Archaeological Anthropology','Social-Cultural Anthropology Theory','Anthropological Thinkers','Indian Anthropology','Tribal Studies & PVTGs','Applied Anthropology'],
-  'CSAT':['Reading Comprehension','Logical Reasoning','Analytical Ability','Decision Making','Basic Numeracy','Data Interpretation'],
-  'Essay':['Philosophical Essays','Social Issues','Economy & Development Essays','Polity & Governance Essays','Practice Essay Writing']
+  'Prelims - General Studies':['Current Events (National & International)','History of India & Indian National Movement','Indian & World Geography','Indian Polity & Governance','Economic & Social Development','Environment, Ecology, Biodiversity & Climate Change','General Science'],
+  'Prelims - CSAT':['Comprehension','Interpersonal Skills & Communication','Logical Reasoning & Analytical Ability','Decision Making & Problem Solving','General Mental Ability','Basic Numeracy (Class X)','Data Interpretation (Class X)'],
+  'GS Paper I (Mains)':['Indian Heritage & Culture','Modern Indian History','World History','Indian Society','Geography of India & World'],
+  'GS Paper II (Mains)':['Indian Constitution & Polity','Governance','Social Justice','International Relations'],
+  'GS Paper III (Mains)':['Indian Economy','Science & Technology','Environment & Ecology','Disaster Management','Internal Security'],
+  'GS Paper IV (Mains)':['Ethics & Human Interface','Attitude & Aptitude','Integrity in Public Administration','Case Studies'],
+  'Essay':['Philosophical Essays','Social Issues Essays','Economy & Development Essays','Polity & Governance Essays','Practice Essay Writing & Evaluation'],
+  'Optional Paper 1 - Anthropology':['1.1 Meaning, Scope & Development of Anthropology','1.2 Relationship with Other Disciplines','1.3 Main Branches of Anthropology','1.4 Human Evolution & Emergence of Man','1.5 Characteristics of Primates & Taxonomy','1.6 Phylogenetic Status of Hominids (Australopithecines to Homo sapiens)','1.7 Biological Basis of Life (Cell, DNA, Genes)','1.8 Prehistoric Archaeology & Cultural Evolution (Paleolithic-Iron Age)','2.1 The Nature of Culture','2.2 The Nature of Society','2.3 Marriage','2.4 Family','2.5 Kinship','3. Economic Organization','4. Political Organization & Social Control','5. Religion','6. Anthropological Theories','7. Culture, Language & Communication','8. Research Methods in Anthropology','9.1 Human Genetics - Methods & Application','9.2 Mendelian Genetics in Man','9.3 Genetic Polymorphism, Selection & Hardy-Weinberg Law','9.4 Chromosomes & Chromosomal Aberrations','9.5 Race & Racism','9.6 Age, Sex & Population Variation (Genetic Markers)','9.7 Ecological Anthropology','9.8 Epidemiological Anthropology','10. Human Growth & Development','11. Fertility, Demography & Mortality','12. Applications of Anthropology'],
+  'Optional Paper 2 - Anthropology':['1.1 Evolution of Indian Culture & Civilization','1.2 Palaeo-Anthropological Evidence from India','1.3 Ethno-Archaeology in India','2. Demographic Profile of India','3.1 Traditional Indian Social System','3.2 Caste System in India','3.3 Sacred Complex & Nature-Man-Spirit Complex','3.4 Impact of Buddhism, Jainism, Islam, Christianity on Indian Society','4. Emergence & Growth of Anthropology in India','5.1 Indian Village','5.2 Linguistic & Religious Minorities','5.3 Social Change (Sanskritization, Westernization, Modernization)','6.1 Tribal Situation in India','6.2 Problems of Tribal Communities','6.3 Development Projects & Tribal Displacement','7.1 Exploitation of SC/ST/OBC','7.2 Social Change & Contemporary Tribal Societies','7.3 Ethnicity & Ethnic Conflicts','8.1 Impact of Religions on Tribal Societies','8.2 Tribe & Nation State','9.1 Administration of Tribal Areas & PTGs','9.2 Role of Anthropology in Tribal & Rural Development','9.3 Anthropology & Regionalism/Communalism']
 };
-var SYL={}; // {subject: [{id, name, status}]} — status: pending|reading|done|revised
+// Spaced-repetition schedule: once a topic is first marked "Covered", revisions
+// are auto-scheduled this many days later (cumulative from the covered date).
+var SRS_INTERVALS=[1,4,7,15,30,60,90];
+var SYL={}; // {paper: [{id, name, status, firstDoneDate, revisionsDone, lastRevisedDate}]}
 var KSY='upsc_syl';
+var KSYSEEDED='upsc_syl_seeded'; // which default version is currently loaded, for the reset button
 var SUBJS=['Anthropology','GS1','GS2','GS3','GS4','CSAT','CA','Essay'];
 var SCOLS={Anthropology:'#c9a84c',GS1:'#4a90d9',GS2:'#3fb97a',GS3:'#e05565',GS4:'#8b6fd4',CSAT:'#d4834a',CA:'#4ab8d9',Essay:'#d4a84a'};
 var MCOLS={GS1:'#4a90d9',GS2:'#c9a84c',GS3:'#3fb97a',GS4:'#8b6fd4','Anthro P1':'#e05565','Anthro P2':'#e08065',Prelims:'#4ab8d9',Essay:'#d4a84a','Full Mains':'#d4834a',CSAT:'#4a90d9'};
@@ -964,14 +981,22 @@ async function load() {
   if (syl && Object.keys(syl).length) {
     SYL = syl;
   } else {
-    // First run — seed with a reasonable default topic breakdown per subject.
-    // Fully editable/removable afterwards, same as everything else here.
-    Object.keys(SYL_DEF).forEach(function(subj){
-      SYL[subj] = SYL_DEF[subj].map(function(name, i){ return {id: subj+'_'+i, name: name, status: 'pending'}; });
-    });
+    seedSyllabusDefaults();
   }
   if (phase >= PHS.length) phase = PHS.length - 1;
   if (phase < 0) phase = 0;
+}
+
+function seedSyllabusDefaults(){
+  // Fresh paper-wise seed with real syllabus content. Fully editable/removable
+  // afterwards — this only runs automatically on first-ever use, or when the
+  // user explicitly hits "Reset to Official Syllabus".
+  SYL={};
+  Object.keys(SYL_DEF).forEach(function(paper){
+    SYL[paper] = SYL_DEF[paper].map(function(name, i){
+      return {id: paper+'_'+i, name: name, status: 'pending', firstDoneDate: null, revisionsDone: 0, lastRevisedDate: null};
+    });
+  });
 }
 
 // Debounced save — batches rapid back-to-back mutations into one write
@@ -1130,6 +1155,7 @@ function rDash(){
   var lp=document.getElementById('dashLoops');if(lp){lp.innerHTML='';Object.keys(LT).forEach(function(s){var t=LT[s];var c=lc[s]||0;var pct=Math.round(c/t*100);lp.innerHTML+='<div class="msr"><div class="msr-l">'+s+'</div><div style="display:flex;align-items:center;gap:8px"><div style="width:80px;background:var(--bg5);border-radius:2px;height:3px;overflow:hidden"><div style="width:'+pct+'%;height:3px;background:var(--gold);border-radius:2px"></div></div><div class="msr-v">'+c+'/'+t+'</div></div></div>';});}
   rHm();
   checkBackupReminder();
+  renderDashDueRevisions();
   var rec=logs.slice().sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,7);
   si('recentTb').innerHTML=rec.length?rec.map(function(l){return'<tr><td>'+fD(l.date)+'</td><td>'+(l.subjects||[]).map(function(s){return'<span class="badge bg" style="margin-right:2px">'+s+'</span>';}).join('')+'</td><td style="color:var(--t2)">'+(l.hours||0)+'h</td><td style="color:var(--gold2)">'+(l.answers||0)+'</td><td style="font-family:var(--mono);color:'+sc(l.score,l.scoreOf)+'">'+scLbl(l.score,l.scoreOf)+'</td><td style="color:var(--green)">'+(l.essays||0)+'</td><td style="color:var(--blue)">'+(l.cases||0)+'</td><td style="color:var(--t3);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(l.notes||'')+'</td><td><button class="btn btn-sm" style="background:rgba(74,144,217,.1);border-color:var(--bbd);color:var(--blue)" onclick="editLog('+l.id+')">edit</button></td></tr>';}).join(''):'<tr><td colspan="9" class="empty">No entries yet</td></tr>';
 }
@@ -1159,6 +1185,31 @@ function checkBackupReminder(){
     if(txt)txt.textContent=lastBackupDate?('You last exported a backup '+daysSince+' days ago ('+fD(lastBackupDate)+'). Over a multi-month prep, it\'s worth keeping a fresh copy.'):'You\'ve never exported a backup yet. With months of daily logs ahead, it\'s worth having one safety copy.';
   } else {
     el.style.display='none';
+  }
+}
+// Shows every syllabus topic whose spaced-repetition revision is due today
+// or overdue, right on the Dashboard — this is the "check what's in red
+// every day" list.
+function renderDashDueRevisions(){
+  var wrap=document.getElementById('dashDueRevisions');var list=document.getElementById('dashDueList');
+  if(!wrap||!list)return;
+  var due=(typeof getDueRevisions==='function')?getDueRevisions():[];
+  if(!due.length){wrap.style.display='none';return;}
+  wrap.style.display='block';
+  list.innerHTML='';
+  due.slice(0,10).forEach(function(item){
+    var row=document.createElement('div');row.className='msr';
+    var l=document.createElement('div');l.className='msr-l';
+    var overdueTxt=item.due.daysUntil<0?(Math.abs(item.due.daysUntil)+'d overdue'):'due today';
+    l.innerHTML='<span style="color:var(--text)">'+esc(item.topic.name)+'</span> <span style="color:var(--t3)">('+esc(item.paper)+')</span> <span style="color:var(--red)">— '+overdueTxt+'</span>';
+    var btn=document.createElement('button');btn.className='btn btn-g btn-sm';btn.textContent='✓ Revised';
+    btn.addEventListener('click',(function(paper,id){return function(){markSylRevision(paper,id);renderDashDueRevisions();};})(item.paper,item.topic.id));
+    row.appendChild(l);row.appendChild(btn);list.appendChild(row);
+  });
+  if(due.length>10){
+    var more=document.createElement('div');more.style.cssText='font-family:var(--mono);font-size:8px;color:var(--t3);margin-top:4px';
+    more.textContent='+ '+(due.length-10)+' more — see the Syllabus tab for the full list';
+    list.appendChild(more);
   }
 }
 
@@ -1292,7 +1343,7 @@ function rQuick(){
   var th=logs.reduce(function(s,l){return s+(+l.hours||0);},0);
   var el=document.getElementById('quickStats');if(!el)return;
   var allTopics=[];Object.keys(SYL).forEach(function(s){allTopics=allTopics.concat(SYL[s]);});
-  var covDone=allTopics.filter(function(t){return t.status==='done'||t.status==='revised';}).length;
+  var covDone=allTopics.filter(function(t){return t.status==='covered';}).length;
   var covPct=allTopics.length?Math.round(covDone/allTopics.length*100):null;
   el.innerHTML='<div class="msr"><div class="msr-l">Answers/day</div><div class="msr-v">'+(logs.length?(ta/logs.length).toFixed(1):0)+'</div></div>'+
     '<div class="msr"><div class="msr-l">Hours/day</div><div class="msr-v">'+(logs.length?(th/logs.length).toFixed(1):0)+'h</div></div>'+
@@ -1660,96 +1711,195 @@ function resetCk(){customConfirm('Reset checklist to default?', function(){CK=CK
 
 // ============================================================
 // SYLLABUS COVERAGE — the thing that actually predicts your score.
-// Each topic cycles: pending -> reading -> done -> revised -> pending.
+// Status: pending -> reading -> covered (one-way). Once covered, a
+// spaced-repetition schedule kicks in automatically: +1, +4, +7, +15,
+// +30, +60, +90 days from the day it was first covered. Whichever
+// revision is due today (or overdue) shows up in red, both here and
+// as a Dashboard widget, so you always know exactly what to revise.
 // ============================================================
-var SYL_STATUSES=['pending','reading','done','revised'];
+var SYL_STATUSES=['pending','reading','covered'];
 var SYL_META={
   pending:{label:'Pending',color:'var(--t3)',bg:'var(--bg5)'},
   reading:{label:'Reading',color:'var(--blue)',bg:'var(--bbg)'},
-  done:{label:'Done',color:'var(--gold2)',bg:'var(--gdim)'},
-  revised:{label:'Revised',color:'var(--green)',bg:'var(--gbg)'}
+  covered:{label:'Covered',color:'var(--gold2)',bg:'var(--gdim)'}
 };
+function addDaysStr(dateStr,n){var d=new Date(dateStr);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+// Returns null if not yet covered, else {revisionsDone, dueDate, daysUntil, state}
+// state: 'mastered' (all 7 revisions done) | 'due' (overdue/today) | 'soon' (<=3 days) | 'scheduled'
+function topicDueInfo(t){
+  if(t.status!=='covered'||!t.firstDoneDate)return null;
+  var revisionsDone=t.revisionsDone||0;
+  if(revisionsDone>=SRS_INTERVALS.length)return{revisionsDone:revisionsDone,dueDate:null,daysUntil:null,state:'mastered'};
+  var dueDate=addDaysStr(t.firstDoneDate,SRS_INTERVALS[revisionsDone]);
+  var daysUntil=Math.ceil((new Date(dueDate)-new Date(today()))/(1000*60*60*24));
+  var state=daysUntil<=0?'due':(daysUntil<=3?'soon':'scheduled');
+  return{revisionsDone:revisionsDone,dueDate:dueDate,daysUntil:daysUntil,state:state};
+}
 function sylStats(topics){
   var n=topics.length;
-  var done=topics.filter(function(t){return t.status==='done'||t.status==='revised';}).length;
-  var revised=topics.filter(function(t){return t.status==='revised';}).length;
-  return {n:n,done:done,revised:revised,pct:n?Math.round(done/n*100):0};
+  var covered=topics.filter(function(t){return t.status==='covered';}).length;
+  var mastered=topics.filter(function(t){var d=topicDueInfo(t);return d&&d.state==='mastered';}).length;
+  return {n:n,covered:covered,mastered:mastered,pct:n?Math.round(covered/n*100):0};
+}
+// Scans every paper/topic for revisions due today or overdue — used by both
+// the Syllabus tab and the Dashboard "Due Today" widget.
+function getDueRevisions(){
+  var due=[];
+  Object.keys(SYL).forEach(function(paper){
+    (SYL[paper]||[]).forEach(function(t){
+      var d=topicDueInfo(t);
+      if(d&&d.state==='due')due.push({paper:paper,topic:t,due:d});
+    });
+  });
+  due.sort(function(a,b){return a.due.daysUntil-b.due.daysUntil;}); // most overdue first
+  return due;
 }
 function rSyllabus(){
-  var subjects=Object.keys(SYL);
-  var totalTopics=0,totalDone=0,totalRevised=0;
-  subjects.forEach(function(s){var st=sylStats(SYL[s]);totalTopics+=st.n;totalDone+=st.done;totalRevised+=st.revised;});
-  var overallPct=totalTopics?Math.round(totalDone/totalTopics*100):0;
-  var revPct=totalTopics?Math.round(totalRevised/totalTopics*100):0;
+  var papers=Object.keys(SYL);
+  var totalTopics=0,totalCovered=0,totalMastered=0;
+  papers.forEach(function(p){var st=sylStats(SYL[p]);totalTopics+=st.n;totalCovered+=st.covered;totalMastered+=st.mastered;});
+  var overallPct=totalTopics?Math.round(totalCovered/totalTopics*100):0;
+  var dueList=getDueRevisions();
   var se=document.getElementById('sylStats');
   if(se)se.innerHTML=
-    '<div class="stat"><div class="slbl">Overall Coverage</div><div class="sval" style="color:'+(overallPct>=80?'var(--green)':overallPct>=50?'var(--gold2)':'var(--red)')+'">'+overallPct+'<span style="font-size:12px;color:var(--t3)">%</span></div><div class="ssub">'+totalDone+'/'+totalTopics+' topics covered</div><div class="spbar"><div class="spbar-f" style="width:'+overallPct+'%"></div></div></div>'+
-    '<div class="stat"><div class="slbl">Revised At Least Once</div><div class="sval" style="color:var(--green)">'+revPct+'<span style="font-size:12px;color:var(--t3)">%</span></div><div class="ssub">'+totalRevised+' topics</div></div>'+
-    '<div class="stat"><div class="slbl">Subjects Tracked</div><div class="sval">'+subjects.length+'</div><div class="ssub">'+totalTopics+' total topics</div></div>'+
-    '<div class="stat"><div class="slbl">Untouched Topics</div><div class="sval" style="color:'+(totalTopics-totalDone>0?'var(--red)':'var(--green)')+'">'+(totalTopics-totalDone)+'</div><div class="ssub">still pending/reading</div></div>';
+    '<div class="stat"><div class="slbl">Overall Coverage</div><div class="sval" style="color:'+(overallPct>=80?'var(--green)':overallPct>=50?'var(--gold2)':'var(--red)')+'">'+overallPct+'<span style="font-size:12px;color:var(--t3)">%</span></div><div class="ssub">'+totalCovered+'/'+totalTopics+' topics covered</div><div class="spbar"><div class="spbar-f" style="width:'+overallPct+'%"></div></div></div>'+
+    '<div class="stat"><div class="slbl">Due For Revision Today</div><div class="sval" style="color:'+(dueList.length>0?'var(--red)':'var(--green)')+'">'+dueList.length+'</div><div class="ssub">check the list below</div></div>'+
+    '<div class="stat"><div class="slbl">Papers Tracked</div><div class="sval">'+papers.length+'</div><div class="ssub">'+totalTopics+' total topics</div></div>'+
+    '<div class="stat"><div class="slbl">Fully Mastered (7/7 revisions)</div><div class="sval" style="color:var(--green)">'+totalMastered+'</div><div class="ssub">topics revised 7 times</div></div>';
+
+  // Due-today list, right at the top of the tab
+  var dueEl=document.getElementById('sylDueList');
+  if(dueEl){
+    if(!dueList.length){
+      dueEl.innerHTML='<div class="empty" style="color:var(--green)">Nothing due for revision today. 🎉</div>';
+    } else {
+      dueEl.innerHTML='';
+      dueList.forEach(function(item){
+        var row=document.createElement('div');row.className='msr';
+        var l=document.createElement('div');l.className='msr-l';
+        var overdueTxt=item.due.daysUntil<0?(' — '+Math.abs(item.due.daysUntil)+'d overdue'):' — due today';
+        l.innerHTML='<span style="color:var(--red)">●</span> '+esc(item.topic.name)+' <span style="color:var(--t3)">('+esc(item.paper)+')</span><span style="color:var(--red)">'+overdueTxt+'</span> <span style="color:var(--t3)">Rev '+(item.due.revisionsDone+1)+'/'+SRS_INTERVALS.length+'</span>';
+        var btn=document.createElement('button');btn.className='btn btn-g btn-sm';btn.textContent='✓ Mark Revised';
+        btn.addEventListener('click',(function(paper,id){return function(){markSylRevision(paper,id);};})(item.paper,item.topic.id));
+        row.appendChild(l);row.appendChild(btn);dueEl.appendChild(row);
+      });
+    }
+  }
 
   var list=document.getElementById('sylList');if(!list)return;list.innerHTML='';
-  subjects.forEach(function(subj){
-    var topics=SYL[subj];
+  papers.forEach(function(paper){
+    var topics=SYL[paper];
     var st=sylStats(topics);
     var card=document.createElement('div');card.className='card';
     var hdr=document.createElement('div');hdr.className='ctitle';
-    hdr.innerHTML='<span>'+esc(subj)+' <span class="ctv">'+st.done+'/'+st.n+' ('+st.pct+'%)</span></span>';
+    hdr.innerHTML='<span>'+esc(paper)+' <span class="ctv">'+st.covered+'/'+st.n+' ('+st.pct+'%)</span></span>';
     var hbtns=document.createElement('div');hbtns.style.cssText='display:flex;gap:5px';
-    var addTb=document.createElement('button');addTb.className='btn btn-sm';addTb.textContent='+ Topic';addTb.addEventListener('click',(function(s){return function(){addSylTopic(s);};})(subj));
-    var delSb=document.createElement('button');delSb.className='btn btn-d btn-sm';delSb.textContent='Remove Subject';delSb.addEventListener('click',(function(s){return function(){removeSylSubject(s);};})(subj));
+    var addTb=document.createElement('button');addTb.className='btn btn-sm';addTb.textContent='+ Topic';addTb.addEventListener('click',(function(p){return function(){addSylTopic(p);};})(paper));
+    var delSb=document.createElement('button');delSb.className='btn btn-d btn-sm';delSb.textContent='Remove Paper';delSb.addEventListener('click',(function(p){return function(){removeSylSubject(p);};})(paper));
     hbtns.appendChild(addTb);hbtns.appendChild(delSb);hdr.appendChild(hbtns);
     card.appendChild(hdr);
     var bar=document.createElement('div');bar.className='spbar';bar.style.marginBottom='10px';
     var barF=document.createElement('div');barF.className='spbar-f';barF.style.width=st.pct+'%';barF.style.background=st.pct>=80?'var(--green)':'var(--gold)';
     bar.appendChild(barF);card.appendChild(bar);
     topics.forEach(function(t){
-      var row=document.createElement('div');row.className='msr';
-      var l=document.createElement('div');l.className='msr-l';l.style.color='var(--text)';l.textContent=t.name;
-      var r=document.createElement('div');r.style.cssText='display:flex;align-items:center;gap:6px';
+      var row=document.createElement('div');row.className='msr';row.style.alignItems='center';
+      var l=document.createElement('div');l.className='msr-l';l.style.color='var(--text)';l.style.flex='1';l.textContent=t.name;
+      var r=document.createElement('div');r.style.cssText='display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end';
       var meta=SYL_META[t.status]||SYL_META.pending;
       var badge=document.createElement('span');badge.className='badge';badge.style.cssText='background:'+meta.bg+';color:'+meta.color+';border:1px solid '+meta.color+'44;cursor:pointer;padding:3px 9px;font-size:9px';
-      badge.textContent=meta.label;badge.title='Click to advance status';
-      badge.addEventListener('click',(function(s,id){return function(){cycleSylStatus(s,id);};})(subj,t.id));
+      badge.textContent=meta.label;badge.title=t.status==='covered'?'Already covered — use Mark Revised for the revision cycle':'Click to advance status';
+      badge.addEventListener('click',(function(p,id){return function(){cycleSylStatus(p,id);};})(paper,t.id));
+      r.appendChild(badge);
+      // Once covered, show the spaced-repetition progress + next due date
+      var dd=topicDueInfo(t);
+      if(dd){
+        var srsBadge=document.createElement('span');
+        srsBadge.style.cssText='font-family:var(--mono);font-size:8px;padding:2px 7px;border-radius:3px;white-space:nowrap;';
+        if(dd.state==='mastered'){
+          srsBadge.style.background='var(--gbg)';srsBadge.style.color='var(--green)';
+          srsBadge.textContent='✓ Mastered (7/7)';
+        } else if(dd.state==='due'){
+          srsBadge.style.background='var(--rbg)';srsBadge.style.color='var(--red)';
+          srsBadge.textContent='Rev '+(dd.revisionsDone+1)+'/'+SRS_INTERVALS.length+' — '+(dd.daysUntil<0?Math.abs(dd.daysUntil)+'d overdue':'due today');
+        } else if(dd.state==='soon'){
+          srsBadge.style.background='var(--gdim)';srsBadge.style.color='var(--gold2)';
+          srsBadge.textContent='Rev '+(dd.revisionsDone+1)+'/'+SRS_INTERVALS.length+' in '+dd.daysUntil+'d';
+        } else {
+          srsBadge.style.background='var(--bg5)';srsBadge.style.color='var(--t3)';
+          srsBadge.textContent='Rev '+(dd.revisionsDone+1)+'/'+SRS_INTERVALS.length+' in '+dd.daysUntil+'d';
+        }
+        r.appendChild(srsBadge);
+        if(dd.state==='due'||dd.state==='soon'){
+          var revBtn=document.createElement('button');revBtn.className='btn btn-g btn-sm';revBtn.textContent='✓ Revised';
+          revBtn.addEventListener('click',(function(p,id){return function(){markSylRevision(p,id);};})(paper,t.id));
+          r.appendChild(revBtn);
+        }
+      }
       var delT=document.createElement('span');delT.textContent='✕';delT.style.cssText='cursor:pointer;color:var(--t3);font-size:11px';delT.title='Remove topic';
-      delT.addEventListener('click',(function(s,id){return function(){removeSylTopic(s,id);};})(subj,t.id));
-      r.appendChild(badge);r.appendChild(delT);
+      delT.addEventListener('click',(function(p,id){return function(){removeSylTopic(p,id);};})(paper,t.id));
+      r.appendChild(delT);
       row.appendChild(l);row.appendChild(r);card.appendChild(row);
     });
     if(!topics.length)card.innerHTML+='<div class="empty">No topics yet — click + Topic to add one</div>';
     list.appendChild(card);
   });
-  if(!subjects.length)list.innerHTML='<div class="empty">No subjects yet — click + Add Subject above</div>';
+  if(!papers.length)list.innerHTML='<div class="empty">No papers yet — click + Add Paper above</div>';
 }
-function cycleSylStatus(subj,id){
-  var t=(SYL[subj]||[]).find(function(x){return x.id===id;});if(!t)return;
+function cycleSylStatus(paper,id){
+  var t=(SYL[paper]||[]).find(function(x){return x.id===id;});if(!t)return;
+  if(t.status==='covered'){toast('Already covered — use "Revised" button when a revision is due');return;}
   var idx=SYL_STATUSES.indexOf(t.status);
-  t.status=SYL_STATUSES[(idx+1)%SYL_STATUSES.length];
+  var next=SYL_STATUSES[idx+1];
+  t.status=next;
+  if(next==='covered'){
+    t.firstDoneDate=today();t.revisionsDone=0;t.lastRevisedDate=null;
+    toast('Marked covered — revisions scheduled at +1, +4, +7, +15, +30, +60, +90 days');
+  }
   saveAll();rSyllabus();
 }
-function addSylSubject(){
-  customPrompt('New subject name (e.g. "GS5", "Optional Paper 2"):','',function(name){
-    if(!name)return;name=name.trim();if(!name)return;
-    if(SYL[name]){toast('Subject already exists');return;}
-    SYL[name]=[];saveAll();rSyllabus();toast(name+' added — now add topics to it');
-  });
+function markSylRevision(paper,id){
+  var t=(SYL[paper]||[]).find(function(x){return x.id===id;});if(!t)return;
+  if(t.status!=='covered')return;
+  t.revisionsDone=(t.revisionsDone||0)+1;
+  t.lastRevisedDate=today();
+  saveAll();rSyllabus();rDash();
+  toast(t.revisionsDone>=SRS_INTERVALS.length?(t.name+' fully mastered! 🎉'):(t.name+' — revision '+t.revisionsDone+'/'+SRS_INTERVALS.length+' logged'));
 }
-function removeSylSubject(subj){
-  customConfirm('Remove "'+subj+'" and all its topics from syllabus tracking?',function(){
-    delete SYL[subj];saveAll();rSyllabus();
-  });
-}
-function addSylTopic(subj){
-  customPrompt('Topic name to add under '+subj+':','',function(name){
-    if(!name)return;name=name.trim();if(!name)return;
-    SYL[subj]=SYL[subj]||[];
-    SYL[subj].push({id:subj+'_'+Date.now(),name:name,status:'pending'});
+function resetSylTopic(paper,id){
+  var t=(SYL[paper]||[]).find(function(x){return x.id===id;});if(!t)return;
+  customConfirm('Reset "'+t.name+'" back to Pending? This clears its revision progress.',function(){
+    t.status='pending';t.firstDoneDate=null;t.revisionsDone=0;t.lastRevisedDate=null;
     saveAll();rSyllabus();
   });
 }
-function removeSylTopic(subj,id){
-  SYL[subj]=(SYL[subj]||[]).filter(function(t){return t.id!==id;});
+function addSylSubject(){
+  customPrompt('New paper name (e.g. "GS Paper V", "Optional Paper 3"):','',function(name){
+    if(!name)return;name=name.trim();if(!name)return;
+    if(SYL[name]){toast('Paper already exists');return;}
+    SYL[name]=[];saveAll();rSyllabus();toast(name+' added — now add topics to it');
+  });
+}
+function removeSylSubject(paper){
+  customConfirm('Remove "'+paper+'" and all its topics from syllabus tracking?',function(){
+    delete SYL[paper];saveAll();rSyllabus();
+  });
+}
+function addSylTopic(paper){
+  customPrompt('Topic name to add under '+paper+':','',function(name){
+    if(!name)return;name=name.trim();if(!name)return;
+    SYL[paper]=SYL[paper]||[];
+    SYL[paper].push({id:paper+'_'+Date.now(),name:name,status:'pending',firstDoneDate:null,revisionsDone:0,lastRevisedDate:null});
+    saveAll();rSyllabus();
+  });
+}
+function removeSylTopic(paper,id){
+  SYL[paper]=(SYL[paper]||[]).filter(function(t){return t.id!==id;});
   saveAll();rSyllabus();
+}
+function resetSyllabusToOfficial(){
+  customConfirm('Reset the ENTIRE syllabus tracker to the official paper-wise structure (GS1-4, Prelims, CSAT, Essay, Optional Anthropology Papers 1 & 2)? This replaces all current syllabus data — any custom papers/topics/progress you added will be lost. Consider exporting a backup first.',function(){
+    seedSyllabusDefaults();saveAll();rSyllabus();toast('Syllabus reset to official structure');
+  });
 }
 
 // ============================================================
