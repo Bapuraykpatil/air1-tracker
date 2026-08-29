@@ -453,6 +453,9 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div class="ctitle">Daily Checklist Items
       <button class="btn btn-sm" onclick="addCkItem()">+ Add</button>
     </div>
+    <div style="font-family:var(--mono);font-size:8.5px;color:var(--t3);line-height:1.6;margin-bottom:8px">
+      Set Hrs/Answers/Subject/Topic on any item and ticking it off for the day actually logs that study time and (if a topic is linked) advances its revision schedule — not just a visual checkmark. Leave all four blank for items that are just habits (e.g. "Sleep by 9:30 PM").
+    </div>
     <div id="ckEditList"></div>
     <div style="margin-top:8px"><button class="btn btn-sm" onclick="resetCk()" style="font-size:8px">Reset to Default</button></div>
   </div>
@@ -646,16 +649,16 @@ var PHS=PH_DEF.map(function(p){return{n:p.n,d:p.d,dur:p.dur};});
 var LT_DEF={GS1:3,GS2:4,GS3:2,GS4:2,Anthropology:5};
 var LT={GS1:3,GS2:4,GS3:2,GS4:2,Anthropology:5};
 var CK_DEF=[
-  {id:'wake',   label:'Wake 4:00 AM - books open in 5 min', time:'4:00 AM'},
-  {id:'anthro', label:'Anthropology - 45 min',              time:'4:05 AM'},
-  {id:'ca',     label:'CA / Extra GS - 30 min',             time:'4:50 AM'},
-  {id:'class',  label:'Class - 2 hours',                    time:'6:00 AM'},
-  {id:'gs',     label:'Main GS Subject - 60 min',           time:'7:00 PM'},
-  {id:'rev',    label:'Revision - 30 min',                  time:'8:00 PM'},
-  {id:'ans',    label:'Answer Writing - 1 answer',          time:'8:30 PM'},
-  {id:'sleep',  label:'Sleep by 9:30 PM',                   time:'9:30 PM'}
+  {id:'wake',   label:'Wake 4:00 AM - books open in 5 min', time:'4:00 AM', hours:0,    answers:0, subject:''},
+  {id:'anthro', label:'Anthropology - 45 min',              time:'4:05 AM', hours:0.75, answers:0, subject:'Anthropology'},
+  {id:'ca',     label:'CA / Extra GS - 30 min',             time:'4:50 AM', hours:0.5,  answers:0, subject:'CA'},
+  {id:'class',  label:'Class - 2 hours',                    time:'6:00 AM', hours:2,    answers:0, subject:''},
+  {id:'gs',     label:'Main GS Subject - 60 min',           time:'7:00 PM', hours:1,    answers:0, subject:''},
+  {id:'rev',    label:'Revision - 30 min',                  time:'8:00 PM', hours:0.5,  answers:0, subject:''},
+  {id:'ans',    label:'Answer Writing - 1 answer',          time:'8:30 PM', hours:0,    answers:1, subject:''},
+  {id:'sleep',  label:'Sleep by 9:30 PM',                   time:'9:30 PM', hours:0,    answers:0, subject:''}
 ];
-var CK=CK_DEF.map(function(i){return{id:i.id,label:i.label,time:i.time};});
+var CK=CK_DEF.map(function(i){return{id:i.id,label:i.label,time:i.time,hours:i.hours||0,answers:i.answers||0,subject:i.subject||'',topicPaper:i.topicPaper||null,topicId:i.topicId||null};});
 var SYL_DEF={
   'Prelims - General Studies':['Current Events (National & International)','History of India & Indian National Movement','Indian & World Geography','Indian Polity & Governance','Economic & Social Development','Environment, Ecology, Biodiversity & Climate Change','General Science'],
   'Prelims - CSAT':['Comprehension','Interpersonal Skills & Communication','Logical Reasoning & Analytical Ability','Decision Making & Problem Solving','General Mental Ability','Basic Numeracy (Class X)','Data Interpretation (Class X)'],
@@ -1313,7 +1316,42 @@ function rCk(){
     el.appendChild(div);
   });
 }
-function togCk(k){if(!checks[today()])checks[today()]={};checks[today()][k]=!checks[today()][k];saveAll();rCk();}
+// Checking a checklist item now actually does something: if that item has
+// hours, answers, a subject, or a linked syllabus topic configured (set
+// this up per-item in the Phases tab), checking it for today creates a
+// real log entry — same as if you'd filled out Log Entry by hand — and
+// advances that topic's revision schedule. Unchecking removes only the
+// entry it created (never touches manually-added entries).
+function togCk(k){
+  if(!checks[today()])checks[today()]={};
+  var nowChecked=!checks[today()][k];
+  checks[today()][k]=nowChecked;
+  var item=CK.find(function(i){return i.id===k;});
+  if(item){
+    if(nowChecked){
+      var hasEffect=(item.hours&&item.hours>0)||(item.answers&&item.answers>0)||item.subject||(item.topicPaper&&item.topicId);
+      if(hasEffect){
+        var topicInfo=(item.topicPaper&&item.topicId)?applyTopicStudyFromLog(item.topicPaper+'|||'+item.topicId,today()):null;
+        logs.push({
+          date:today(), phase:'Phase '+phase,
+          subjects:item.subject?[item.subject]:[],
+          hours:item.hours||0, answers:item.answers||0,
+          score:null, scoreOf:10, essays:0, cases:0,
+          notes:'Checklist: '+item.label,
+          id:Date.now(), fromChecklist:k,
+          topicPaper:topicInfo?topicInfo.paper:null, topicId:topicInfo?topicInfo.id:null, topicName:topicInfo?topicInfo.name:null
+        });
+        toast('Logged'+(item.hours?' '+item.hours+'h':'')+(item.answers?' '+item.answers+' ans':'')+(item.subject?' — '+item.subject:'')+(topicInfo?' — "'+topicInfo.name+'" revision updated':'')+' from checklist');
+      }
+    } else {
+      // Unticking removes only the entry this exact item auto-created today
+      // (topic revision progress it may have advanced is left as-is, since
+      // that reflects real study that already happened).
+      logs=logs.filter(function(l){return !(l.date===today()&&l.fromChecklist===k);});
+    }
+  }
+  saveAll();rCk();rDash();
+}
 
 function setHm(m,btn){
   hmM=m;
@@ -1756,7 +1794,36 @@ function rPhases(){
     div.appendChild(dot);div.appendChild(row);div.appendChild(drow);tl.appendChild(div);
   });
   var ltg=document.getElementById('ltGrid');if(ltg){ltg.innerHTML='';Object.keys(LT).forEach(function(s){var c=document.createElement('div');c.style.cssText='background:var(--bg4);border:1px solid var(--border);border-radius:4px;padding:10px 12px';var l=document.createElement('div');l.style.cssText='font-family:var(--mono);font-size:9px;color:var(--t3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;display:flex;justify-content:space-between;align-items:center';var lt2=document.createElement('span');lt2.textContent=s;l.appendChild(lt2);var del=document.createElement('span');del.textContent='✕';del.style.cssText='cursor:pointer;color:var(--t3)';del.title='Remove subject';del.addEventListener('click',(function(subj){return function(){removeLoopSubject(subj);};})(s));l.appendChild(del);var inp=document.createElement('input');inp.type='number';inp.min='1';inp.max='999';inp.value=LT[s];inp.style.cssText='width:60px;font-size:18px;font-weight:700;color:var(--gold2);text-align:center;background:var(--bg5);border:1px solid var(--border);border-radius:4px;padding:4px;font-family:var(--mono)';inp.addEventListener('change',(function(subj,inp2){return function(){var v=+inp2.value;if(v>=1){LT[subj]=v;saveAll();rLoops();toast(subj+' loops: '+v);}}})(s,inp));var sp=document.createElement('span');sp.style.cssText='font-family:var(--mono);font-size:9px;color:var(--t3);margin-left:6px';sp.textContent='loops (no limit)';var row=document.createElement('div');row.style.display='flex';row.style.alignItems='center';row.appendChild(inp);row.appendChild(sp);c.appendChild(l);c.appendChild(row);ltg.appendChild(c);});}
-  var ce=document.getElementById('ckEditList');if(ce){ce.innerHTML='';CK.forEach(function(item,i){var row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--border)';var num=document.createElement('span');num.style.cssText='font-family:var(--mono);font-size:9px;color:var(--t3);width:18px;text-align:center;flex-shrink:0';num.textContent=i+1;var li=document.createElement('input');li.type='text';li.value=item.label;li.style.cssText='flex:1;background:var(--bg4);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 7px;outline:none';li.addEventListener('change',(function(idx,inp){return function(){CK[idx].label=inp.value;saveAll();}})(i,li));var ti=document.createElement('input');ti.type='text';ti.value=item.time;ti.style.cssText='width:70px;background:var(--bg4);border:1px solid var(--border);border-radius:3px;color:var(--gold2);font-family:var(--mono);font-size:10px;padding:4px 7px;outline:none;text-align:center';ti.addEventListener('change',(function(idx,inp){return function(){CK[idx].time=inp.value;saveAll();}})(i,ti));var del=document.createElement('button');del.className='btn btn-d btn-sm';del.textContent='x';del.addEventListener('click',(function(idx){return function(){if(CK.length<=1){toast('Cannot remove last!');return;}CK.splice(idx,1);saveAll();rPhases();}})(i));row.appendChild(num);row.appendChild(li);row.appendChild(ti);row.appendChild(del);ce.appendChild(row);});}
+  var ce=document.getElementById('ckEditList');if(ce){ce.innerHTML='';CK.forEach(function(item,i){
+    var wrap=document.createElement('div');wrap.style.cssText='padding:8px 0;border-bottom:1px solid var(--border)';
+    var row1=document.createElement('div');row1.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:5px';
+    var num=document.createElement('span');num.style.cssText='font-family:var(--mono);font-size:9px;color:var(--t3);width:18px;text-align:center;flex-shrink:0';num.textContent=i+1;
+    var li=document.createElement('input');li.type='text';li.value=item.label;li.style.cssText='flex:1;background:var(--bg4);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 7px;outline:none';
+    li.addEventListener('change',(function(idx,inp){return function(){CK[idx].label=inp.value;saveAll();}})(i,li));
+    var ti=document.createElement('input');ti.type='text';ti.value=item.time;ti.style.cssText='width:70px;background:var(--bg4);border:1px solid var(--border);border-radius:3px;color:var(--gold2);font-family:var(--mono);font-size:10px;padding:4px 7px;outline:none;text-align:center';
+    ti.addEventListener('change',(function(idx,inp){return function(){CK[idx].time=inp.value;saveAll();}})(i,ti));
+    var del=document.createElement('button');del.className='btn btn-d btn-sm';del.textContent='x';del.addEventListener('click',(function(idx){return function(){if(CK.length<=1){toast('Cannot remove last!');return;}CK.splice(idx,1);saveAll();rPhases();}})(i));
+    row1.appendChild(num);row1.appendChild(li);row1.appendChild(ti);row1.appendChild(del);
+    var row2=document.createElement('div');row2.style.cssText='display:flex;align-items:center;gap:5px;margin-left:24px;flex-wrap:wrap';
+    var hl=document.createElement('span');hl.style.cssText='font-family:var(--mono);font-size:8px;color:var(--t3)';hl.textContent='Hrs';
+    var hi=document.createElement('input');hi.type='number';hi.min='0';hi.step='0.25';hi.value=item.hours||0;hi.style.cssText='width:52px;background:var(--bg4);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:9px;padding:3px 5px;outline:none';
+    hi.addEventListener('change',(function(idx,inp){return function(){CK[idx].hours=parseFloat(inp.value)||0;saveAll();}})(i,hi));
+    var al=document.createElement('span');al.style.cssText='font-family:var(--mono);font-size:8px;color:var(--t3)';al.textContent='Ans';
+    var ai=document.createElement('input');ai.type='number';ai.min='0';ai.value=item.answers||0;ai.style.cssText='width:44px;background:var(--bg4);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:9px;padding:3px 5px;outline:none';
+    ai.addEventListener('change',(function(idx,inp){return function(){CK[idx].answers=parseInt(inp.value)||0;saveAll();}})(i,ai));
+    var sl=document.createElement('span');sl.style.cssText='font-family:var(--mono);font-size:8px;color:var(--t3)';sl.textContent='Subject';
+    var si=document.createElement('select');si.style.cssText='width:110px;background:var(--bg4);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:9px;padding:3px 5px;outline:none';
+    si.innerHTML='<option value="">—</option>'+SUBJS.map(function(s){return '<option'+(item.subject===s?' selected':'')+'>'+esc(s)+'</option>';}).join('');
+    si.addEventListener('change',(function(idx,inp){return function(){CK[idx].subject=inp.value;saveAll();}})(i,si));
+    var tl=document.createElement('span');tl.style.cssText='font-family:var(--mono);font-size:8px;color:var(--t3)';tl.textContent='Topic';
+    var tsel=document.createElement('select');tsel.style.cssText='width:150px;background:var(--bg4);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:9px;padding:3px 5px;outline:none';
+    var topicOpts='<option value="">— none —</option>';
+    Object.keys(SYL).forEach(function(paper){(SYL[paper]||[]).forEach(function(t){var val=paper+'|||'+t.id;topicOpts+='<option value="'+esc(val)+'"'+(item.topicPaper===paper&&item.topicId===t.id?' selected':'')+'>'+esc(t.name)+'</option>';});});
+    tsel.innerHTML=topicOpts;
+    tsel.addEventListener('change',(function(idx,inp){return function(){var v=inp.value;if(!v){CK[idx].topicPaper=null;CK[idx].topicId=null;}else{var parts=v.split('|||');CK[idx].topicPaper=parts[0];CK[idx].topicId=parts[1];}saveAll();}})(i,tsel));
+    row2.appendChild(hl);row2.appendChild(hi);row2.appendChild(al);row2.appendChild(ai);row2.appendChild(sl);row2.appendChild(si);row2.appendChild(tl);row2.appendChild(tsel);
+    wrap.appendChild(row1);wrap.appendChild(row2);ce.appendChild(wrap);
+  });}
   refreshPhaseSelects();
 }
 
@@ -1815,7 +1882,7 @@ function deletePhase(i){
   });
 }
 function savePhase(){phase=parseInt(document.getElementById('actPhase').value);saveAll();rPhases();document.getElementById('hPhase').textContent='PHASE '+phase;toast('Phase updated');}
-function addCkItem(){CK.push({id:'ck_'+Date.now(),label:'New task',time:'00:00'});saveAll();rPhases();}
+function addCkItem(){CK.push({id:'ck_'+Date.now(),label:'New task',time:'00:00',hours:0,answers:0,subject:'',topicPaper:null,topicId:null});saveAll();rPhases();}
 function resetCk(){customConfirm('Reset checklist to default?', function(){CK=CK_DEF.map(function(i){return{id:i.id,label:i.label,time:i.time};});saveAll();rPhases();rCk();toast('Reset');});}
 
 // ============================================================
