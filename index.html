@@ -401,7 +401,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
       </div>
       <div style="margin-bottom:8px">
         <div style="font-size:9px;color:var(--t3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Which syllabus topic did you read? (optional — auto-schedules revisions at +1,4,7,15,30,60,90 days)</div>
-        <select id="lgTopic"><option value="">— No specific topic —</option></select>
+        <select id="lgTopic" onchange="handleLgTopicChange(this)"><option value="">— No specific topic —</option></select>
       </div>
       <div class="frow">
         <div class="fg" style="flex:0 0 80px"><label>Answers</label><input type="number" id="lgAns" min="0" max="20" value="1"></div>
@@ -1011,6 +1011,7 @@ function refreshTopicSelect(){
   var sel=document.getElementById('lgTopic');if(!sel)return;
   var cur=sel.value;
   var html='<option value="">— No specific topic —</option>';
+  html+='<option value="__ADD_NEW__" style="color:var(--gold2)">+ Add a new topic manually...</option>';
   Object.keys(SYL).forEach(function(paper){
     var topics=SYL[paper]||[];
     if(!topics.length)return;
@@ -1024,6 +1025,31 @@ function refreshTopicSelect(){
   sel.innerHTML=html;
   var opts=Array.prototype.map.call(sel.options,function(o){return o.value;});
   sel.value=opts.indexOf(cur)>=0?cur:'';
+}
+// Triggered when the Log Entry topic dropdown changes. Picking "+ Add a new
+// topic manually..." opens a two-step flow (which paper, then topic name)
+// so a missing subtopic can be added without ever leaving Log Entry — it's
+// added to the Syllabus tab's data too, and gets selected for this entry.
+function handleLgTopicChange(sel){
+  if(sel.value!=='__ADD_NEW__')return;
+  sel.value=''; // reset display immediately; will be set properly on success
+  var existingPapers=Object.keys(SYL);
+  customPrompt('Which paper is this topic under? Existing: '+(existingPapers.join(', ')||'(none yet)')+'. Type an existing name exactly to add into it, or a new name to create a new paper:', existingPapers[0]||'', function(paperName){
+    if(!paperName)return;paperName=paperName.trim();if(!paperName)return;
+    customPrompt('Topic name to add under "'+paperName+'":','',function(topicName){
+      if(!topicName)return;topicName=topicName.trim();if(!topicName)return;
+      if(!SYL[paperName])SYL[paperName]=[];
+      var newId=paperName+'_'+Date.now();
+      SYL[paperName].push({id:newId,name:topicName,status:'pending',firstDoneDate:null,revisionsDone:0,lastRevisedDate:null});
+      saveAll();
+      refreshTopicSelect();
+      var sel2=document.getElementById('lgTopic');
+      if(sel2)sel2.value=paperName+'|||'+newId;
+      var sylTab=document.getElementById('tab-syllabus');
+      if(sylTab&&sylTab.classList.contains('on'))rSyllabus();
+      toast('"'+topicName+'" added under '+paperName+' — selected for this entry');
+    });
+  });
 }
 // Called when a log entry that links to a syllabus topic is saved (new
 // entries only, not edits, so re-editing hours/notes doesn't accidentally
