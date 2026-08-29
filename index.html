@@ -451,6 +451,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
   </div>
   <div class="card">
     <div class="ctitle">Daily Checklist Items
+      <button class="btn btn-sm" onclick="autoFillChecklistFromLabels()">Auto-fill Hrs/Subject from labels</button>
       <button class="btn btn-sm" onclick="addCkItem()">+ Add</button>
     </div>
     <div style="font-family:var(--mono);font-size:8.5px;color:var(--t3);line-height:1.6;margin-bottom:8px">
@@ -948,6 +949,7 @@ async function onUserSignedIn(user) {
   if(un)un.textContent=user.displayName?user.displayName.split(' ')[0]:'';
   // Load data and render
   await load();
+  syncChecklistLogsForToday(); // catch up any checked boxes that are missing their log entry (e.g. hours were just configured after checking)
   if(lm)lm.textContent='Ready!';
   var t=today();
   ['lgDate','loopDate','mkDate','spDate','errDate'].forEach(function(id){var el=document.getElementById(id);if(el)el.value=t;});
@@ -1351,6 +1353,68 @@ function togCk(k){
     }
   }
   saveAll();rCk();rDash();
+}
+// Catches up any checklist boxes that are ticked for today but don't yet
+// have a matching log entry — e.g. you checked them before setting up
+// Hrs/Subject on the item, or edited those values afterward. Called on
+// every app load so nothing needs to be manually re-ticked.
+function syncChecklistLogsForToday(){
+  var t=today();
+  var todayChecks=checks[t]||{};
+  var didSync=false;
+  CK.forEach(function(item){
+    if(!todayChecks[item.id])return;
+    var hasEffect=(item.hours&&item.hours>0)||(item.answers&&item.answers>0)||item.subject||(item.topicPaper&&item.topicId);
+    if(!hasEffect)return;
+    var already=logs.some(function(l){return l.date===t&&l.fromChecklist===item.id;});
+    if(already)return;
+    var topicInfo=(item.topicPaper&&item.topicId)?applyTopicStudyFromLog(item.topicPaper+'|||'+item.topicId,t):null;
+    logs.push({
+      date:t, phase:'Phase '+phase,
+      subjects:item.subject?[item.subject]:[],
+      hours:item.hours||0, answers:item.answers||0,
+      score:null, scoreOf:10, essays:0, cases:0,
+      notes:'Checklist: '+item.label,
+      id:Date.now()+Math.floor(Math.random()*1000), fromChecklist:item.id,
+      topicPaper:topicInfo?topicInfo.paper:null, topicId:topicInfo?topicInfo.id:null, topicName:topicInfo?topicInfo.name:null
+    });
+    didSync=true;
+  });
+  if(didSync){saveAll();toast('Caught up hours/answers for already-checked items today');}
+  return didSync;
+}
+// One-click helper: reads labels like "4:00 AM - 5:30 AM -> Anthropology"
+// and fills in Hours + Subject automatically, so you don't have to type
+// them in by hand for a schedule you've already written out as text.
+function autoFillChecklistFromLabels(){
+  var timeRe=/(\d{1,2}:\d{2})\s*([AaPp][Mm])\s*-\s*(\d{1,2}:\d{2})\s*([AaPp][Mm])/;
+  function toMinutes(t,ap){
+    var parts=t.split(':');var h=parseInt(parts[0],10);var m=parseInt(parts[1],10);
+    ap=ap.toUpperCase();
+    if(ap==='AM'){if(h===12)h=0;} else {if(h!==12)h+=12;}
+    return h*60+m;
+  }
+  var changed=0;
+  CK.forEach(function(item){
+    var m=item.label.match(timeRe);
+    if(m){
+      var startMin=toMinutes(m[1],m[2]);
+      var endMin=toMinutes(m[3],m[4]);
+      var diff=endMin-startMin;
+      if(diff<0)diff+=24*60;
+      var hrs=Math.round((diff/60)*4)/4; // nearest 0.25h
+      if(hrs>0){item.hours=hrs;changed++;}
+    }
+    var arrowIdx=item.label.indexOf('->');
+    if(arrowIdx>=0){
+      var subjRaw=item.label.slice(arrowIdx+2).replace(/\(.*?\)/g,'').trim().replace(/GS-?\s*(\d)/i,'GS$1');
+      var found=SUBJS.find(function(s){return s.toLowerCase()===subjRaw.toLowerCase();});
+      if(found)item.subject=found;
+    }
+  });
+  saveAll();rPhases();
+  toast('Auto-filled '+changed+' item(s) from their labels — review below, then it\'ll catch up today\'s logging automatically');
+  syncChecklistLogsForToday();rDash();
 }
 
 function setHm(m,btn){
