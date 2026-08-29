@@ -399,6 +399,10 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
           <div class="chip" onclick="togS(this,'Essay')">Essay</div>
         </div>
       </div>
+      <div style="margin-bottom:8px">
+        <div style="font-size:9px;color:var(--t3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Which syllabus topic did you read? (optional — auto-schedules revisions at +1,4,7,15,30,60,90 days)</div>
+        <select id="lgTopic"><option value="">— No specific topic —</option></select>
+      </div>
       <div class="frow">
         <div class="fg" style="flex:0 0 80px"><label>Answers</label><input type="number" id="lgAns" min="0" max="20" value="1"></div>
         <div class="fg" style="flex:0 0 65px"><label>Score</label><input type="number" id="lgScore" min="0" step="0.5" placeholder="7"></div>
@@ -947,6 +951,7 @@ async function onUserSignedIn(user) {
   var hd=document.getElementById('hDate');
   if(hd)hd.textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
   refreshPhaseSelects();
+  refreshTopicSelect();
   quoteIdx=Math.floor(Math.random()*QUOTES.length);
   rQuote(); rDash(); rWeekSum();
   if(ov)ov.style.display='none';
@@ -997,6 +1002,48 @@ function seedSyllabusDefaults(){
       return {id: paper+'_'+i, name: name, status: 'pending', firstDoneDate: null, revisionsDone: 0, lastRevisedDate: null};
     });
   });
+}
+// Keeps the Log Entry "which topic did you read" dropdown in sync with
+// whatever papers/topics currently exist in the Syllabus tab, grouped by
+// paper. Value format: "paper|||topicId" (||| is safe — never appears in
+// paper/topic names).
+function refreshTopicSelect(){
+  var sel=document.getElementById('lgTopic');if(!sel)return;
+  var cur=sel.value;
+  var html='<option value="">— No specific topic —</option>';
+  Object.keys(SYL).forEach(function(paper){
+    var topics=SYL[paper]||[];
+    if(!topics.length)return;
+    html+='<optgroup label="'+esc(paper)+'">';
+    topics.forEach(function(t){
+      var tag=t.status==='covered'?' [covered]':'';
+      html+='<option value="'+esc(paper)+'|||'+esc(t.id)+'">'+esc(t.name)+tag+'</option>';
+    });
+    html+='</optgroup>';
+  });
+  sel.innerHTML=html;
+  var opts=Array.prototype.map.call(sel.options,function(o){return o.value;});
+  sel.value=opts.indexOf(cur)>=0?cur:'';
+}
+// Called when a log entry that links to a syllabus topic is saved (new
+// entries only, not edits, so re-editing hours/notes doesn't accidentally
+// advance the revision schedule again). First time studying a topic starts
+// its spaced-repetition clock (+1,4,7,15,30,60,90 days); studying an
+// already-covered topic again counts as completing that revision.
+function applyTopicStudyFromLog(topicValue, logDate){
+  if(!topicValue)return null;
+  var parts=topicValue.split('|||');
+  var paper=parts[0], id=parts[1];
+  var t=(SYL[paper]||[]).find(function(x){return x.id===id;});
+  if(!t)return null;
+  if(t.status!=='covered'){
+    t.status='covered';t.firstDoneDate=logDate||today();t.revisionsDone=0;t.lastRevisedDate=null;
+    toast('"'+t.name+'" marked covered — revisions scheduled at +1,4,7,15,30,60,90 days');
+  } else {
+    t.revisionsDone=(t.revisionsDone||0)+1;t.lastRevisedDate=logDate||today();
+    toast('"'+t.name+'" — revision '+t.revisionsDone+'/'+SRS_INTERVALS.length+' logged from today\'s entry');
+  }
+  return {paper:paper, id:id, name:t.name};
 }
 
 // Debounced save — batches rapid back-to-back mutations into one write
@@ -1473,23 +1520,33 @@ function saveLog(){
   var sc2=parseFloat(document.getElementById('lgScore').value)||null;
   var scOf=parseFloat(document.getElementById('lgScoreOf').value)||10;
   var p=document.getElementById('lgPhase').value;
+  var topicSel=document.getElementById('lgTopic');
+  var topicVal=topicSel?topicSel.value:'';
   if(!selSubj.length){toast('Select at least one subject!');return;}
 
   if(editingId!==null){
-    // UPDATE existing
+    // UPDATE existing — topic linkage from the original entry is kept as-is.
+    // Editing hours/notes shouldn't re-trigger the revision schedule again.
     var idx=logs.findIndex(function(l){return l.id===editingId;});
     if(idx>=0){
-      logs[idx]={date:d,phase:p,subjects:selSubj.slice(),hours:h,answers:a,score:sc2,scoreOf:scOf,essays:e,cases:c,notes:n,id:editingId};
+      var old=logs[idx];
+      logs[idx]={date:d,phase:p,subjects:selSubj.slice(),hours:h,answers:a,score:sc2,scoreOf:scOf,essays:e,cases:c,notes:n,id:editingId,topicPaper:old.topicPaper,topicId:old.topicId,topicName:old.topicName};
       saveAll();
       toast('Entry updated!');
     }
     cancelEdit();
   } else {
-    // NEW entry
-    logs.push({date:d,phase:p,subjects:selSubj.slice(),hours:h,answers:a,score:sc2,scoreOf:scOf,essays:e,cases:c,notes:n,id:Date.now()});
+    // NEW entry — if a syllabus topic was linked, this is what actually
+    // starts or advances that topic's spaced-repetition revision schedule.
+    var topicInfo=topicVal?applyTopicStudyFromLog(topicVal,d):null;
+    logs.push({date:d,phase:p,subjects:selSubj.slice(),hours:h,answers:a,score:sc2,scoreOf:scOf,essays:e,cases:c,notes:n,id:Date.now(),
+      topicPaper:topicInfo?topicInfo.paper:null,topicId:topicInfo?topicInfo.id:null,topicName:topicInfo?topicInfo.name:null});
     saveAll();
     _resetLogForm();
-    toast('Entry saved! Data persisted.');
+    toast(topicInfo?'Entry saved — "'+topicInfo.name+'" revision schedule updated!':'Entry saved! Data persisted.');
+    renderDashDueRevisions();
+    var sylTab=document.getElementById('tab-syllabus');
+    if(sylTab&&sylTab.classList.contains('on'))rSyllabus();
   }
   rWeekSum();
 }
@@ -1505,6 +1562,7 @@ function _resetLogForm(){
   document.getElementById('lgCas').value='0';
   document.getElementById('lgNotes').value='';
   document.getElementById('lgHrs').value='5';
+  var ts=document.getElementById('lgTopic');if(ts)ts.value='';
 }
 
 // Load an existing entry into the form for editing
@@ -1524,6 +1582,18 @@ function editLog(id){
   document.getElementById('lgEss').value=l.essays||0;
   document.getElementById('lgCas').value=l.cases||0;
   document.getElementById('lgNotes').value=l.notes||'';
+  // Show which topic this entry was originally linked to, read-only in
+  // effect (editing doesn't re-trigger the revision schedule — see saveLog)
+  var ts=document.getElementById('lgTopic');
+  if(ts){
+    if(l.topicPaper&&l.topicId){
+      refreshTopicSelect();
+      ts.value=l.topicPaper+'|||'+l.topicId;
+      if(ts.value!==l.topicPaper+'|||'+l.topicId)ts.value=''; // topic may have been deleted since
+    } else {
+      ts.value='';
+    }
+  }
   // Set subject chips
   selSubj=(l.subjects||[]).slice();
   document.querySelectorAll('#subjChips .chip').forEach(function(c){
@@ -1844,6 +1914,7 @@ function rSyllabus(){
     list.appendChild(card);
   });
   if(!papers.length)list.innerHTML='<div class="empty">No papers yet — click + Add Paper above</div>';
+  refreshTopicSelect();
 }
 function cycleSylStatus(paper,id){
   var t=(SYL[paper]||[]).find(function(x){return x.id===id;});if(!t)return;
