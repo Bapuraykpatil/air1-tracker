@@ -1273,7 +1273,7 @@ function renderDashDueRevisions(){
   due.slice(0,10).forEach(function(item){
     var row=document.createElement('div');row.className='msr';
     var l=document.createElement('div');l.className='msr-l';
-    var overdueTxt=item.due.daysUntil<0?(Math.abs(item.due.daysUntil)+'d overdue'):'due today';
+    var overdueTxt='was due '+fD(item.due.dueDate)+' ('+(item.due.daysUntil<0?Math.abs(item.due.daysUntil)+'d overdue':'today')+')';
     l.innerHTML='<span style="color:var(--text)">'+esc(item.topic.name)+'</span> <span style="color:var(--t3)">('+esc(item.paper)+')</span> <span style="color:var(--red)">— '+overdueTxt+'</span>';
     var btn=document.createElement('button');btn.className='btn btn-g btn-sm';btn.textContent='✓ Revised';
     btn.addEventListener('click',(function(paper,id){return function(){markSylRevision(paper,id);renderDashDueRevisions();};})(item.paper,item.topic.id));
@@ -1873,7 +1873,7 @@ function rSyllabus(){
       dueList.forEach(function(item){
         var row=document.createElement('div');row.className='msr';
         var l=document.createElement('div');l.className='msr-l';
-        var overdueTxt=item.due.daysUntil<0?(' — '+Math.abs(item.due.daysUntil)+'d overdue'):' — due today';
+        var overdueTxt=' — was due '+fD(item.due.dueDate)+' ('+(item.due.daysUntil<0?Math.abs(item.due.daysUntil)+'d overdue':'today')+')';
         l.innerHTML='<span style="color:var(--red)">●</span> '+esc(item.topic.name)+' <span style="color:var(--t3)">('+esc(item.paper)+')</span><span style="color:var(--red)">'+overdueTxt+'</span> <span style="color:var(--t3)">Rev '+(item.due.revisionsDone+1)+'/'+SRS_INTERVALS.length+'</span>';
         var btn=document.createElement('button');btn.className='btn btn-g btn-sm';btn.textContent='✓ Mark Revised';
         btn.addEventListener('click',(function(paper,id){return function(){markSylRevision(paper,id);};})(item.paper,item.topic.id));
@@ -1913,16 +1913,16 @@ function rSyllabus(){
         srsBadge.style.cssText='font-family:var(--mono);font-size:8px;padding:2px 7px;border-radius:3px;white-space:nowrap;';
         if(dd.state==='mastered'){
           srsBadge.style.background='var(--gbg)';srsBadge.style.color='var(--green)';
-          srsBadge.textContent='✓ Mastered (7/7)';
+          srsBadge.textContent='✓ Mastered (7/7) — last revised '+(t.lastRevisedDate?fD(t.lastRevisedDate):'-');
         } else if(dd.state==='due'){
           srsBadge.style.background='var(--rbg)';srsBadge.style.color='var(--red)';
-          srsBadge.textContent='Rev '+(dd.revisionsDone+1)+'/'+SRS_INTERVALS.length+' — '+(dd.daysUntil<0?Math.abs(dd.daysUntil)+'d overdue':'due today');
+          srsBadge.textContent='Rev '+(dd.revisionsDone+1)+'/'+SRS_INTERVALS.length+' — due '+fD(dd.dueDate)+' ('+(dd.daysUntil<0?Math.abs(dd.daysUntil)+'d overdue':'today')+')';
         } else if(dd.state==='soon'){
           srsBadge.style.background='var(--gdim)';srsBadge.style.color='var(--gold2)';
-          srsBadge.textContent='Rev '+(dd.revisionsDone+1)+'/'+SRS_INTERVALS.length+' in '+dd.daysUntil+'d';
+          srsBadge.textContent='Rev '+(dd.revisionsDone+1)+'/'+SRS_INTERVALS.length+' — due '+fD(dd.dueDate)+' (in '+dd.daysUntil+'d)';
         } else {
           srsBadge.style.background='var(--bg5)';srsBadge.style.color='var(--t3)';
-          srsBadge.textContent='Rev '+(dd.revisionsDone+1)+'/'+SRS_INTERVALS.length+' in '+dd.daysUntil+'d';
+          srsBadge.textContent='Rev '+(dd.revisionsDone+1)+'/'+SRS_INTERVALS.length+' — due '+fD(dd.dueDate)+' (in '+dd.daysUntil+'d)';
         }
         r.appendChild(srsBadge);
         if(dd.state==='due'||dd.state==='soon'){
