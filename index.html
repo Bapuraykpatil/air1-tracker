@@ -1982,11 +1982,12 @@ function removeSylSubject(paper){
   });
 }
 function addSylTopic(paper){
-  customPrompt('Topic name to add under '+paper+':','',function(name){
+  customPrompt('Topic name to add under '+paper+' (this will be marked Covered right away, with revisions auto-scheduled at +1,4,7,15,30,60,90 days — since adding it here means you just studied it):','',function(name){
     if(!name)return;name=name.trim();if(!name)return;
     SYL[paper]=SYL[paper]||[];
-    SYL[paper].push({id:paper+'_'+Date.now(),name:name,status:'pending',firstDoneDate:null,revisionsDone:0,lastRevisedDate:null});
+    SYL[paper].push({id:paper+'_'+Date.now(),name:name,status:'covered',firstDoneDate:today(),revisionsDone:0,lastRevisedDate:null});
     saveAll();rSyllabus();
+    toast('"'+name+'" added and marked covered — first revision due tomorrow');
   });
 }
 function removeSylTopic(paper,id){
