@@ -1267,22 +1267,35 @@ function renderDashDueRevisions(){
   var wrap=document.getElementById('dashDueRevisions');var list=document.getElementById('dashDueList');
   if(!wrap||!list)return;
   var due=(typeof getDueRevisions==='function')?getDueRevisions():[];
-  if(!due.length){wrap.style.display='none';return;}
+  var soon=(!due.length&&typeof getSoonRevisions==='function')?getSoonRevisions():[];
+  if(!due.length&&!soon.length){wrap.style.display='none';return;}
   wrap.style.display='block';
   list.innerHTML='';
-  due.slice(0,10).forEach(function(item){
-    var row=document.createElement('div');row.className='msr';
-    var l=document.createElement('div');l.className='msr-l';
-    var overdueTxt='was due '+fD(item.due.dueDate)+' ('+(item.due.daysUntil<0?Math.abs(item.due.daysUntil)+'d overdue':'today')+')';
-    l.innerHTML='<span style="color:var(--text)">'+esc(item.topic.name)+'</span> <span style="color:var(--t3)">('+esc(item.paper)+')</span> <span style="color:var(--red)">— '+overdueTxt+'</span>';
-    var btn=document.createElement('button');btn.className='btn btn-g btn-sm';btn.textContent='✓ Revised';
-    btn.addEventListener('click',(function(paper,id){return function(){markSylRevision(paper,id);renderDashDueRevisions();};})(item.paper,item.topic.id));
-    row.appendChild(l);row.appendChild(btn);list.appendChild(row);
-  });
-  if(due.length>10){
-    var more=document.createElement('div');more.style.cssText='font-family:var(--mono);font-size:8px;color:var(--t3);margin-top:4px';
-    more.textContent='+ '+(due.length-10)+' more — see the Syllabus tab for the full list';
-    list.appendChild(more);
+  if(due.length){
+    due.slice(0,10).forEach(function(item){
+      var row=document.createElement('div');row.className='msr';
+      var l=document.createElement('div');l.className='msr-l';
+      var overdueTxt='was due '+fD(item.due.dueDate)+' ('+(item.due.daysUntil<0?Math.abs(item.due.daysUntil)+'d overdue':'today')+')';
+      l.innerHTML='<span style="color:var(--text)">'+esc(item.topic.name)+'</span> <span style="color:var(--t3)">('+esc(item.paper)+')</span> <span style="color:var(--red)">— '+overdueTxt+'</span>';
+      var btn=document.createElement('button');btn.className='btn btn-g btn-sm';btn.textContent='✓ Revised';
+      btn.addEventListener('click',(function(paper,id){return function(){markSylRevision(paper,id);renderDashDueRevisions();};})(item.paper,item.topic.id));
+      row.appendChild(l);row.appendChild(btn);list.appendChild(row);
+    });
+    if(due.length>10){
+      var more=document.createElement('div');more.style.cssText='font-family:var(--mono);font-size:8px;color:var(--t3);margin-top:4px';
+      more.textContent='+ '+(due.length-10)+' more — see the Syllabus tab for the full list';
+      list.appendChild(more);
+    }
+  } else {
+    var note=document.createElement('div');note.style.cssText='font-family:var(--mono);font-size:8px;color:var(--gold2);margin-bottom:4px';
+    note.textContent='Nothing overdue — coming up within 3 days:';
+    list.appendChild(note);
+    soon.slice(0,5).forEach(function(item){
+      var row=document.createElement('div');row.className='msr';
+      var l=document.createElement('div');l.className='msr-l';
+      l.innerHTML='<span style="color:var(--text)">'+esc(item.topic.name)+'</span> <span style="color:var(--t3)">('+esc(item.paper)+') — due '+fD(item.due.dueDate)+' (in '+item.due.daysUntil+'d)</span>';
+      row.appendChild(l);list.appendChild(row);
+    });
   }
 }
 
@@ -1850,6 +1863,33 @@ function getDueRevisions(){
   due.sort(function(a,b){return a.due.daysUntil-b.due.daysUntil;}); // most overdue first
   return due;
 }
+// Anything covered whose revision falls within the next 3 days — lets you
+// see the queue moving even when nothing is overdue yet, and you can revise
+// a topic a little early if it's convenient.
+function getSoonRevisions(){
+  var soon=[];
+  Object.keys(SYL).forEach(function(paper){
+    (SYL[paper]||[]).forEach(function(t){
+      var d=topicDueInfo(t);
+      if(d&&d.state==='soon')soon.push({paper:paper,topic:t,due:d});
+    });
+  });
+  soon.sort(function(a,b){return a.due.daysUntil-b.due.daysUntil;});
+  return soon;
+}
+// Furthest-out preview (used only when nothing is due/soon, so the widget
+// never looks empty/broken right after you've just covered something).
+function getUpcomingPreview(n){
+  var up=[];
+  Object.keys(SYL).forEach(function(paper){
+    (SYL[paper]||[]).forEach(function(t){
+      var d=topicDueInfo(t);
+      if(d&&d.state==='scheduled')up.push({paper:paper,topic:t,due:d});
+    });
+  });
+  up.sort(function(a,b){return a.due.daysUntil-b.due.daysUntil;});
+  return up.slice(0,n||3);
+}
 function rSyllabus(){
   var papers=Object.keys(SYL);
   var totalTopics=0,totalCovered=0,totalMastered=0;
@@ -1863,13 +1903,14 @@ function rSyllabus(){
     '<div class="stat"><div class="slbl">Papers Tracked</div><div class="sval">'+papers.length+'</div><div class="ssub">'+totalTopics+' total topics</div></div>'+
     '<div class="stat"><div class="slbl">Fully Mastered (7/7 revisions)</div><div class="sval" style="color:var(--green)">'+totalMastered+'</div><div class="ssub">topics revised 7 times</div></div>';
 
-  // Due-today list, right at the top of the tab
+  // Due-today list, right at the top of the tab — falls back to "due soon"
+  // then a plain upcoming preview so the box never looks empty/broken right
+  // after you've just covered something (its first revision is tomorrow,
+  // not today, so this always shows the queue moving).
   var dueEl=document.getElementById('sylDueList');
   if(dueEl){
-    if(!dueList.length){
-      dueEl.innerHTML='<div class="empty" style="color:var(--green)">Nothing due for revision today. 🎉</div>';
-    } else {
-      dueEl.innerHTML='';
+    dueEl.innerHTML='';
+    if(dueList.length){
       dueList.forEach(function(item){
         var row=document.createElement('div');row.className='msr';
         var l=document.createElement('div');l.className='msr-l';
@@ -1879,6 +1920,36 @@ function rSyllabus(){
         btn.addEventListener('click',(function(paper,id){return function(){markSylRevision(paper,id);};})(item.paper,item.topic.id));
         row.appendChild(l);row.appendChild(btn);dueEl.appendChild(row);
       });
+    } else {
+      var soonList=getSoonRevisions();
+      if(soonList.length){
+        var note=document.createElement('div');note.style.cssText='font-family:var(--mono);font-size:9px;color:var(--gold2);margin-bottom:6px';
+        note.textContent='Nothing overdue — but these come due within 3 days. You can revise early if you like:';
+        dueEl.appendChild(note);
+        soonList.forEach(function(item){
+          var row=document.createElement('div');row.className='msr';
+          var l=document.createElement('div');l.className='msr-l';
+          l.innerHTML='<span style="color:var(--gold2)">●</span> '+esc(item.topic.name)+' <span style="color:var(--t3)">('+esc(item.paper)+')</span> <span style="color:var(--gold2)"> — due '+fD(item.due.dueDate)+' (in '+item.due.daysUntil+'d)</span> <span style="color:var(--t3)">Rev '+(item.due.revisionsDone+1)+'/'+SRS_INTERVALS.length+'</span>';
+          var btn=document.createElement('button');btn.className='btn btn-ghost btn-sm';btn.textContent='Revise Early';
+          btn.addEventListener('click',(function(paper,id){return function(){markSylRevision(paper,id);};})(item.paper,item.topic.id));
+          row.appendChild(l);row.appendChild(btn);dueEl.appendChild(row);
+        });
+      } else {
+        var upcoming=getUpcomingPreview(5);
+        if(upcoming.length){
+          var note2=document.createElement('div');note2.style.cssText='font-family:var(--mono);font-size:9px;color:var(--green);margin-bottom:6px';
+          note2.textContent='Nothing due yet. Next up:';
+          dueEl.appendChild(note2);
+          upcoming.forEach(function(item){
+            var row=document.createElement('div');row.className='msr';
+            var l=document.createElement('div');l.className='msr-l';
+            l.innerHTML=esc(item.topic.name)+' <span style="color:var(--t3)">('+esc(item.paper)+') — due '+fD(item.due.dueDate)+' (in '+item.due.daysUntil+'d) — Rev '+(item.due.revisionsDone+1)+'/'+SRS_INTERVALS.length+'</span>';
+            row.appendChild(l);dueEl.appendChild(row);
+          });
+        } else {
+          dueEl.innerHTML='<div class="empty" style="color:var(--t3)">No topics covered yet — mark one Covered above to start its revision schedule.</div>';
+        }
+      }
     }
   }
 
