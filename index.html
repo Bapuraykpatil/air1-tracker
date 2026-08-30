@@ -451,11 +451,11 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
   </div>
   <div class="card">
     <div class="ctitle">Daily Checklist Items
-      <button class="btn btn-sm" onclick="autoFillChecklistFromLabels()">Auto-fill Hrs/Subject from labels</button>
+      <button class="btn btn-sm" onclick="autoFillChecklistFromLabels()">Auto-fill Scheduled Hrs from labels</button>
       <button class="btn btn-sm" onclick="addCkItem()">+ Add</button>
     </div>
     <div style="font-family:var(--mono);font-size:8.5px;color:var(--t3);line-height:1.6;margin-bottom:8px">
-      Set Hrs/Answers/Subject/Topic on any item and ticking it off for the day actually logs that study time and (if a topic is linked) advances its revision schedule — not just a visual checkmark. Leave all four blank for items that are just habits (e.g. "Sleep by 9:30 PM").
+      Set Scheduled Hrs on any item to see "X/Yh scheduled" next to today's checklist — a separate measurement of how well you're sticking to your planned timetable. It never creates or changes any log entries: your actual studied topics, answers, and revision schedule still come only from <b style="color:var(--gold2)">Log Entry</b>, exactly as before, so nothing gets double-counted.
     </div>
     <div id="ckEditList"></div>
     <div style="margin-top:8px"><button class="btn btn-sm" onclick="resetCk()" style="font-size:8px">Reset to Default</button></div>
@@ -949,7 +949,6 @@ async function onUserSignedIn(user) {
   if(un)un.textContent=user.displayName?user.displayName.split(' ')[0]:'';
   // Load data and render
   await load();
-  syncChecklistLogsForToday(); // catch up any checked boxes that are missing their log entry (e.g. hours were just configured after checking)
   if(lm)lm.textContent='Ready!';
   var t=today();
   ['lgDate','loopDate','mkDate','spDate','errDate'].forEach(function(id){var el=document.getElementById(id);if(el)el.value=t;});
@@ -995,6 +994,13 @@ async function load() {
   }
   if (phase >= PHS.length) phase = PHS.length - 1;
   if (phase < 0) phase = 0;
+  // One-time cleanup: an earlier version auto-created log entries when you
+  // ticked checklist boxes. That's been reverted — checklist and Log Entry
+  // are separate measurements now — so remove any leftover auto-created
+  // entries to avoid double-counting against what you log manually.
+  var beforeCleanup=logs.length;
+  logs=logs.filter(function(l){return !l.fromChecklist;});
+  if(logs.length!==beforeCleanup)saveAll();
 }
 
 function seedSyllabusDefaults(){
@@ -1307,7 +1313,9 @@ function renderDashDueRevisions(){
 function rCk(){
   var tc=checks[today()]||{};
   var done=CK.filter(function(i){return tc[i.id];}).length;
-  var pct=document.getElementById('checkPct');if(pct)pct.textContent='('+done+'/'+CK.length+' done)';
+  var sh=todaysScheduledHours();
+  var pct=document.getElementById('checkPct');
+  if(pct)pct.textContent='('+done+'/'+CK.length+' done'+(sh.target?' · '+sh.done+'/'+sh.target+'h scheduled':'')+')';
   var el=document.getElementById('dashChecklist');if(!el)return;
   el.innerHTML='';
   CK.forEach(function(item){
@@ -1325,67 +1333,28 @@ function rCk(){
 // advances that topic's revision schedule. Unchecking removes only the
 // entry it created (never touches manually-added entries).
 function togCk(k){
+  // Checklist tracks whether you stuck to today's planned schedule — a
+  // separate measurement from Log Entry. It never creates or removes log
+  // entries, so it can never double-count against what you log manually.
   if(!checks[today()])checks[today()]={};
-  var nowChecked=!checks[today()][k];
-  checks[today()][k]=nowChecked;
-  var item=CK.find(function(i){return i.id===k;});
-  if(item){
-    if(nowChecked){
-      var hasEffect=(item.hours&&item.hours>0)||(item.answers&&item.answers>0)||item.subject||(item.topicPaper&&item.topicId);
-      if(hasEffect){
-        var topicInfo=(item.topicPaper&&item.topicId)?applyTopicStudyFromLog(item.topicPaper+'|||'+item.topicId,today()):null;
-        logs.push({
-          date:today(), phase:'Phase '+phase,
-          subjects:item.subject?[item.subject]:[],
-          hours:item.hours||0, answers:item.answers||0,
-          score:null, scoreOf:10, essays:0, cases:0,
-          notes:'Checklist: '+item.label,
-          id:Date.now(), fromChecklist:k,
-          topicPaper:topicInfo?topicInfo.paper:null, topicId:topicInfo?topicInfo.id:null, topicName:topicInfo?topicInfo.name:null
-        });
-        toast('Logged'+(item.hours?' '+item.hours+'h':'')+(item.answers?' '+item.answers+' ans':'')+(item.subject?' — '+item.subject:'')+(topicInfo?' — "'+topicInfo.name+'" revision updated':'')+' from checklist');
-      }
-    } else {
-      // Unticking removes only the entry this exact item auto-created today
-      // (topic revision progress it may have advanced is left as-is, since
-      // that reflects real study that already happened).
-      logs=logs.filter(function(l){return !(l.date===today()&&l.fromChecklist===k);});
-    }
-  }
-  saveAll();rCk();rDash();
+  checks[today()][k]=!checks[today()][k];
+  saveAll();rCk();
 }
-// Catches up any checklist boxes that are ticked for today but don't yet
-// have a matching log entry — e.g. you checked them before setting up
-// Hrs/Subject on the item, or edited those values afterward. Called on
-// every app load so nothing needs to be manually re-ticked.
-function syncChecklistLogsForToday(){
-  var t=today();
-  var todayChecks=checks[t]||{};
-  var didSync=false;
+// Sum of planned hours for checklist items that have an Hrs value set,
+// vs. how many of those hours are actually ticked off today. This is a
+// schedule-adherence measurement, kept deliberately separate from the
+// Total Study Hours stat (which comes only from real Log Entry data).
+function todaysScheduledHours(){
+  var t=today();var tc=checks[t]||{};
+  var target=0,done=0;
   CK.forEach(function(item){
-    if(!todayChecks[item.id])return;
-    var hasEffect=(item.hours&&item.hours>0)||(item.answers&&item.answers>0)||item.subject||(item.topicPaper&&item.topicId);
-    if(!hasEffect)return;
-    var already=logs.some(function(l){return l.date===t&&l.fromChecklist===item.id;});
-    if(already)return;
-    var topicInfo=(item.topicPaper&&item.topicId)?applyTopicStudyFromLog(item.topicPaper+'|||'+item.topicId,t):null;
-    logs.push({
-      date:t, phase:'Phase '+phase,
-      subjects:item.subject?[item.subject]:[],
-      hours:item.hours||0, answers:item.answers||0,
-      score:null, scoreOf:10, essays:0, cases:0,
-      notes:'Checklist: '+item.label,
-      id:Date.now()+Math.floor(Math.random()*1000), fromChecklist:item.id,
-      topicPaper:topicInfo?topicInfo.paper:null, topicId:topicInfo?topicInfo.id:null, topicName:topicInfo?topicInfo.name:null
-    });
-    didSync=true;
+    if(item.hours){target+=item.hours;if(tc[item.id])done+=item.hours;}
   });
-  if(didSync){saveAll();toast('Caught up hours/answers for already-checked items today');}
-  return didSync;
+  return {target:target,done:done};
 }
 // One-click helper: reads labels like "4:00 AM - 5:30 AM -> Anthropology"
-// and fills in Hours + Subject automatically, so you don't have to type
-// them in by hand for a schedule you've already written out as text.
+// and fills in an Hours value automatically, purely for the scheduled-hours
+// measurement above — it does not create or affect any log entries.
 function autoFillChecklistFromLabels(){
   var timeRe=/(\d{1,2}:\d{2})\s*([AaPp][Mm])\s*-\s*(\d{1,2}:\d{2})\s*([AaPp][Mm])/;
   function toMinutes(t,ap){
@@ -1405,16 +1374,9 @@ function autoFillChecklistFromLabels(){
       var hrs=Math.round((diff/60)*4)/4; // nearest 0.25h
       if(hrs>0){item.hours=hrs;changed++;}
     }
-    var arrowIdx=item.label.indexOf('->');
-    if(arrowIdx>=0){
-      var subjRaw=item.label.slice(arrowIdx+2).replace(/\(.*?\)/g,'').trim().replace(/GS-?\s*(\d)/i,'GS$1');
-      var found=SUBJS.find(function(s){return s.toLowerCase()===subjRaw.toLowerCase();});
-      if(found)item.subject=found;
-    }
   });
-  saveAll();rPhases();
-  toast('Auto-filled '+changed+' item(s) from their labels — review below, then it\'ll catch up today\'s logging automatically');
-  syncChecklistLogsForToday();rDash();
+  saveAll();rPhases();rCk();
+  toast('Auto-filled scheduled hours for '+changed+' item(s) from their time ranges');
 }
 
 function setHm(m,btn){
@@ -1869,23 +1831,10 @@ function rPhases(){
     var del=document.createElement('button');del.className='btn btn-d btn-sm';del.textContent='x';del.addEventListener('click',(function(idx){return function(){if(CK.length<=1){toast('Cannot remove last!');return;}CK.splice(idx,1);saveAll();rPhases();}})(i));
     row1.appendChild(num);row1.appendChild(li);row1.appendChild(ti);row1.appendChild(del);
     var row2=document.createElement('div');row2.style.cssText='display:flex;align-items:center;gap:5px;margin-left:24px;flex-wrap:wrap';
-    var hl=document.createElement('span');hl.style.cssText='font-family:var(--mono);font-size:8px;color:var(--t3)';hl.textContent='Hrs';
+    var hl=document.createElement('span');hl.style.cssText='font-family:var(--mono);font-size:8px;color:var(--t3)';hl.textContent='Scheduled Hrs';
     var hi=document.createElement('input');hi.type='number';hi.min='0';hi.step='0.25';hi.value=item.hours||0;hi.style.cssText='width:52px;background:var(--bg4);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:9px;padding:3px 5px;outline:none';
-    hi.addEventListener('change',(function(idx,inp){return function(){CK[idx].hours=parseFloat(inp.value)||0;saveAll();}})(i,hi));
-    var al=document.createElement('span');al.style.cssText='font-family:var(--mono);font-size:8px;color:var(--t3)';al.textContent='Ans';
-    var ai=document.createElement('input');ai.type='number';ai.min='0';ai.value=item.answers||0;ai.style.cssText='width:44px;background:var(--bg4);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:9px;padding:3px 5px;outline:none';
-    ai.addEventListener('change',(function(idx,inp){return function(){CK[idx].answers=parseInt(inp.value)||0;saveAll();}})(i,ai));
-    var sl=document.createElement('span');sl.style.cssText='font-family:var(--mono);font-size:8px;color:var(--t3)';sl.textContent='Subject';
-    var si=document.createElement('select');si.style.cssText='width:110px;background:var(--bg4);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:9px;padding:3px 5px;outline:none';
-    si.innerHTML='<option value="">—</option>'+SUBJS.map(function(s){return '<option'+(item.subject===s?' selected':'')+'>'+esc(s)+'</option>';}).join('');
-    si.addEventListener('change',(function(idx,inp){return function(){CK[idx].subject=inp.value;saveAll();}})(i,si));
-    var tl=document.createElement('span');tl.style.cssText='font-family:var(--mono);font-size:8px;color:var(--t3)';tl.textContent='Topic';
-    var tsel=document.createElement('select');tsel.style.cssText='width:150px;background:var(--bg4);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:9px;padding:3px 5px;outline:none';
-    var topicOpts='<option value="">— none —</option>';
-    Object.keys(SYL).forEach(function(paper){(SYL[paper]||[]).forEach(function(t){var val=paper+'|||'+t.id;topicOpts+='<option value="'+esc(val)+'"'+(item.topicPaper===paper&&item.topicId===t.id?' selected':'')+'>'+esc(t.name)+'</option>';});});
-    tsel.innerHTML=topicOpts;
-    tsel.addEventListener('change',(function(idx,inp){return function(){var v=inp.value;if(!v){CK[idx].topicPaper=null;CK[idx].topicId=null;}else{var parts=v.split('|||');CK[idx].topicPaper=parts[0];CK[idx].topicId=parts[1];}saveAll();}})(i,tsel));
-    row2.appendChild(hl);row2.appendChild(hi);row2.appendChild(al);row2.appendChild(ai);row2.appendChild(sl);row2.appendChild(si);row2.appendChild(tl);row2.appendChild(tsel);
+    hi.addEventListener('change',(function(idx,inp){return function(){CK[idx].hours=parseFloat(inp.value)||0;saveAll();rCk();}})(i,hi));
+    row2.appendChild(hl);row2.appendChild(hi);
     wrap.appendChild(row1);wrap.appendChild(row2);ce.appendChild(wrap);
   });}
   refreshPhaseSelects();
@@ -1946,7 +1895,7 @@ function deletePhase(i){
   });
 }
 function savePhase(){phase=parseInt(document.getElementById('actPhase').value);saveAll();rPhases();document.getElementById('hPhase').textContent='PHASE '+phase;toast('Phase updated');}
-function addCkItem(){CK.push({id:'ck_'+Date.now(),label:'New task',time:'00:00',hours:0,answers:0,subject:'',topicPaper:null,topicId:null});saveAll();rPhases();}
+function addCkItem(){CK.push({id:'ck_'+Date.now(),label:'New task',time:'00:00',hours:0});saveAll();rPhases();}
 function resetCk(){customConfirm('Reset checklist to default?', function(){CK=CK_DEF.map(function(i){return{id:i.id,label:i.label,time:i.time};});saveAll();rPhases();rCk();toast('Reset');});}
 
 // ============================================================
