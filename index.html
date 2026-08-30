@@ -257,6 +257,33 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     <button class="btn btn-sm" onclick="goToDocs()">Go to Documents</button>
     <span style="cursor:pointer;color:var(--t3)" onclick="dismissBackupReminder()" title="Remind me later today">✕</span>
   </div>
+  <div class="card" style="border-color:var(--gb)">
+    <div class="ctitle">Focus Session <span class="ctv" id="forestStatsSummary"></span></div>
+    <div id="focusIdle">
+      <div class="frow">
+        <div class="fg" style="flex:0 0 auto">
+          <label>Duration</label>
+          <div class="pill-row" id="focusDurPills" style="margin-bottom:0">
+            <div class="pill on" onclick="setFocusDur(25,this)">25m</div>
+            <div class="pill" onclick="setFocusDur(45,this)">45m</div>
+            <div class="pill" onclick="setFocusDur(60,this)">60m</div>
+            <div class="pill" onclick="setFocusDur(90,this)">90m</div>
+          </div>
+        </div>
+        <div class="fg" style="flex:0 0 120px"><label>Custom (min)</label><input type="number" id="focusCustomMin" min="1" placeholder="e.g. 35"></div>
+        <div class="fg" style="flex:0 0 140px"><label>Subject (optional)</label><select id="focusSubject"><option value="">—</option></select></div>
+        <div class="fg" style="flex:0 0 auto;justify-content:flex-end"><label>&nbsp;</label><button class="btn" onclick="startFocusSession()">🌱 Start Focus Session</button></div>
+      </div>
+      <div style="font-family:var(--mono);font-size:8px;color:var(--t3)">Switch to another tab or app during a session and the tree dies — just like Forest. Stay here to grow it.</div>
+    </div>
+    <div id="focusActive" style="display:none;text-align:center;padding:20px 0">
+      <div id="focusTreeEmoji" style="font-size:56px;line-height:1">🌱</div>
+      <div id="focusTimeLeft" style="font-family:var(--mono);font-size:28px;font-weight:700;color:var(--gold2);margin-top:8px">25:00</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:4px" id="focusSubjLabel"></div>
+      <div style="margin-top:14px"><button class="btn btn-d" onclick="giveUpFocusSession()">Give Up (kills the tree)</button></div>
+    </div>
+    <div id="focusForestStrip" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:3px"></div>
+  </div>
   <div id="quoteBar" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:9px 14px;margin-bottom:12px;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="nextQuote()">
     <div style="color:var(--gold);font-size:14px;flex-shrink:0">&ldquo;</div>
     <div id="quoteText" style="font-family:var(--mono);font-size:10px;color:var(--t2);flex:1;font-style:italic">Loading...</div>
@@ -626,10 +653,12 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 // ============================================================
 var KL='upsc_logs', KLL='upsc_ll', KM='upsc_mocks', KC='upsc_chk', KP='upsc_ph',
     KLC='upsc_lc', KSP='upsc_sp', KE='upsc_errs', KPN='upsc_plan', KCD='upsc_cd',
-    KPH='upsc_ph2', KLT='upsc_lt2', KCK='upsc_ck2', KJS='upsc_js', KLBD='upsc_lbd';
+    KPH='upsc_ph2', KLT='upsc_lt2', KCK='upsc_ck2', KJS='upsc_js', KLBD='upsc_lbd',
+    KFOREST='upsc_forest', KACTIVESESSION='upsc_active_focus_session';
 
 var logs=[], llogs=[], mocks=[], checks={}, phase=0, lc={}, speeds=[], errs=[],
-    planSecs=[], selSubj=[], lastBackupDate=null;
+    planSecs=[], selSubj=[], lastBackupDate=null, forest=[];
+var focusDurMin=25, focusTimer=null, focusSession=null;
 var journeyStart='2026-06-01'; // default; overridden by saved value
 var charts={}, hmM=1, mf='All', hp=8, quoteIdx=0, colIdx={};
 var editingId=null; // ID of log entry being edited (null = new entry mode)
@@ -949,6 +978,16 @@ async function onUserSignedIn(user) {
   if(un)un.textContent=user.displayName?user.displayName.split(' ')[0]:'';
   // Load data and render
   await load();
+  // If a focus session was left running unresolved (tab closed, browser
+  // crashed, etc.) it never got the chance to complete cleanly — that
+  // counts as leaving, so the tree dies, matching Forest's core rule.
+  var leftoverSession = await sg(KACTIVESESSION, null);
+  if (leftoverSession) {
+    forest.push({id:Date.now(), date:today(), minutes:leftoverSession.durationMin, subject:leftoverSession.subject||'', completed:false});
+    await ss(KACTIVESESSION, null);
+    saveAll();
+    toast('A previous focus session was interrupted — that tree died.');
+  }
   if(lm)lm.textContent='Ready!';
   var t=today();
   ['lgDate','loopDate','mkDate','spDate','errDate'].forEach(function(id){var el=document.getElementById(id);if(el)el.value=t;});
@@ -956,6 +995,7 @@ async function onUserSignedIn(user) {
   if(hd)hd.textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
   refreshPhaseSelects();
   refreshTopicSelect();
+  refreshFocusSubjectSelect();
   quoteIdx=Math.floor(Math.random()*QUOTES.length);
   rQuote(); rDash(); rWeekSum();
   if(ov)ov.style.display='none';
@@ -980,6 +1020,7 @@ async function load() {
   var jsEl = document.getElementById('jsDate');
   if (jsEl) jsEl.value = journeyStart;
   lastBackupDate = await sg(KLBD, null);
+  forest = await sg(KFOREST, []);
   var ph  = await sg(KPH, null);
   if (ph && ph.length) PHS = ph;
   var lt  = await sg(KLT, null);
@@ -1109,6 +1150,7 @@ async function _doSave() {
       ss(KCK,  CK),
       ss(KJS,  journeyStart),
       ss(KSY,  SYL),
+      ss(KFOREST, forest),
     ]);
   } catch(e) {
     console.error('Save error:', e);
@@ -1240,6 +1282,7 @@ function rDash(){
   rHm();
   checkBackupReminder();
   renderDashDueRevisions();
+  renderForestStrip();
   var rec=logs.slice().sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,7);
   si('recentTb').innerHTML=rec.length?rec.map(function(l){return'<tr><td>'+fD(l.date)+'</td><td>'+(l.subjects||[]).map(function(s){return'<span class="badge bg" style="margin-right:2px">'+s+'</span>';}).join('')+'</td><td style="color:var(--t2)">'+(l.hours||0)+'h</td><td style="color:var(--gold2)">'+(l.answers||0)+'</td><td style="font-family:var(--mono);color:'+sc(l.score,l.scoreOf)+'">'+scLbl(l.score,l.scoreOf)+'</td><td style="color:var(--green)">'+(l.essays||0)+'</td><td style="color:var(--blue)">'+(l.cases||0)+'</td><td style="color:var(--t3);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(l.notes||'')+'</td><td><button class="btn btn-sm" style="background:rgba(74,144,217,.1);border-color:var(--bbd);color:var(--blue)" onclick="editLog('+l.id+')">edit</button></td></tr>';}).join(''):'<tr><td colspan="9" class="empty">No entries yet</td></tr>';
 }
@@ -1503,6 +1546,121 @@ function rQuick(){
 }
 function rQuote(){var q=QUOTES[quoteIdx%QUOTES.length];var el=document.getElementById('quoteText');if(el)el.innerHTML='"'+q.q+'" <span style="color:var(--t3)">- '+q.a+'</span>';}
 function nextQuote(){quoteIdx++;rQuote();}
+
+// ============================================================
+// FOCUS SESSION — a Forest-app-style focus timer. A tree grows while you
+// stay on this tab; switch away (or close the tab, or the browser dies)
+// mid-session and the tree dies, same loss-aversion mechanic Forest uses.
+// A completed session is stored in your "forest" as its own measurement —
+// it does not touch Log Entry automatically, but offers a one-click way to
+// also log it as real study time if you want, same pattern as everywhere
+// else in this app (checklist, syllabus topics).
+// ============================================================
+function refreshFocusSubjectSelect(){
+  var sel=document.getElementById('focusSubject');if(!sel)return;
+  var cur=sel.value;
+  sel.innerHTML='<option value="">—</option>'+SUBJS.map(function(s){return '<option>'+esc(s)+'</option>';}).join('');
+  sel.value=cur;
+}
+function setFocusDur(m,btn){
+  focusDurMin=m;
+  document.querySelectorAll('#focusDurPills .pill').forEach(function(p){p.classList.remove('on');});
+  if(btn)btn.classList.add('on');
+  var ci=document.getElementById('focusCustomMin');if(ci)ci.value='';
+}
+async function startFocusSession(){
+  var customEl=document.getElementById('focusCustomMin');
+  var custom=customEl?parseFloat(customEl.value):NaN;
+  var minutes=(custom&&custom>0)?custom:focusDurMin;
+  if(!minutes||minutes<=0){toast('Enter a valid duration');return;}
+  var subj=document.getElementById('focusSubject').value;
+  focusSession={startTime:Date.now(), durationMin:minutes, subject:subj};
+  await ss(KACTIVESESSION, focusSession); // persisted immediately so an unclean exit is detectable next load
+  document.getElementById('focusIdle').style.display='none';
+  document.getElementById('focusActive').style.display='block';
+  document.getElementById('focusSubjLabel').textContent=subj?('Focusing on: '+subj):'Focus session in progress — stay on this tab';
+  updateFocusUI();
+  focusTimer=setInterval(updateFocusUI,1000);
+  toast('🌱 Tree planted — '+minutes+' min. Leaving this tab kills it.');
+}
+function updateFocusUI(){
+  if(!focusSession)return;
+  var elapsedMs=Date.now()-focusSession.startTime;
+  var totalMs=focusSession.durationMin*60000;
+  var remainMs=totalMs-elapsedMs;
+  if(remainMs<=0){completeFocusSession();return;}
+  var progress=elapsedMs/totalMs;
+  var te=document.getElementById('focusTreeEmoji');
+  if(te)te.textContent=progress<0.15?'🌱':progress<0.45?'🌿':progress<0.8?'🌳':'🌲';
+  var mm=Math.floor(remainMs/60000),ssec=Math.floor((remainMs%60000)/1000);
+  var tl=document.getElementById('focusTimeLeft');
+  if(tl)tl.textContent=(mm<10?'0':'')+mm+':'+(ssec<10?'0':'')+ssec;
+}
+async function completeFocusSession(){
+  if(focusTimer){clearInterval(focusTimer);focusTimer=null;}
+  var s=focusSession;focusSession=null;
+  await ss(KACTIVESESSION, null);
+  forest.push({id:Date.now(), date:today(), minutes:s.durationMin, subject:s.subject||'', completed:true});
+  saveAll();
+  var te=document.getElementById('focusTreeEmoji');if(te)te.textContent='🌳✨';
+  toast('🌳 Tree fully grown! '+s.durationMin+' min focused.');
+  setTimeout(function(){
+    resetFocusUI();rDash();
+    customConfirm('Nice focus session ('+s.durationMin+' min'+(s.subject?' — '+s.subject:'')+')! Also log this as study time in Log Entry?',function(){
+      var hrsEl=document.getElementById('lgHrs');if(hrsEl)hrsEl.value=(s.durationMin/60).toFixed(2);
+      var dateEl=document.getElementById('lgDate');if(dateEl)dateEl.value=today();
+      if(s.subject){
+        document.querySelectorAll('#subjChips .chip').forEach(function(c){if(c.textContent.trim()===s.subject)c.click();});
+      }
+      var navBtns=document.querySelectorAll('.nb');
+      var target=null;navBtns.forEach(function(b){if(b.textContent.trim()==='Log Entry')target=b;});
+      showTab('log',target);
+      toast('Hours pre-filled in Log Entry — finish and Save when ready');
+    });
+  },1100);
+}
+function giveUpFocusSession(){
+  customConfirm('Give up now? Your tree will die and this session won\'t count.',function(){failFocusSession('gave up');});
+}
+async function failFocusSession(reason){
+  if(!focusSession)return;
+  if(focusTimer){clearInterval(focusTimer);focusTimer=null;}
+  var s=focusSession;focusSession=null;
+  await ss(KACTIVESESSION, null);
+  forest.push({id:Date.now(), date:today(), minutes:s.durationMin, subject:s.subject||'', completed:false});
+  saveAll();
+  var te=document.getElementById('focusTreeEmoji');if(te)te.textContent='🥀';
+  toast('Tree died ('+reason+') — plant another whenever you\'re ready');
+  setTimeout(function(){resetFocusUI();rDash();},1100);
+}
+function resetFocusUI(){
+  var idle=document.getElementById('focusIdle'),act=document.getElementById('focusActive');
+  if(act)act.style.display='none';
+  if(idle)idle.style.display='block';
+  var ci=document.getElementById('focusCustomMin');if(ci)ci.value='';
+  renderForestStrip();
+}
+function renderForestStrip(){
+  var el=document.getElementById('focusForestStrip');if(!el)return;
+  var completed=forest.filter(function(f){return f.completed;});
+  var totalMin=completed.reduce(function(s,f){return s+f.minutes;},0);
+  var summary=document.getElementById('forestStatsSummary');
+  if(summary)summary.textContent=completed.length+' trees · '+(totalMin/60).toFixed(1)+'h focused';
+  el.innerHTML='';
+  forest.slice(-30).forEach(function(f){
+    var span=document.createElement('span');span.style.fontSize='16px';
+    span.title=fD(f.date)+' — '+f.minutes+'min'+(f.subject?' — '+f.subject:'')+(f.completed?' (completed)':' (died)');
+    span.textContent=f.completed?'🌳':'🥀';
+    el.appendChild(span);
+  });
+}
+// Leaving the tab/app mid-session kills the tree — the whole point of the
+// mechanic. This fires on tab switches, minimizing, and switching apps.
+document.addEventListener('visibilitychange', function(){
+  if(document.hidden && focusSession){
+    failFocusSession('left the tab');
+  }
+});
 
 // ============================================================
 // PERFORMANCE
@@ -2081,6 +2239,11 @@ function rSyllabus(){
           revBtn.addEventListener('click',(function(p,id){return function(){markSylRevision(p,id);};})(paper,t.id));
           r.appendChild(revBtn);
         }
+        if((t.revisionsDone||0)>0){
+          var undoBtn=document.createElement('button');undoBtn.className='btn btn-ghost btn-sm';undoBtn.textContent='↺ Undo';undoBtn.title='Undo the last revision if it was marked by mistake';
+          undoBtn.addEventListener('click',(function(p,id){return function(){undoSylRevision(p,id);};})(paper,t.id));
+          r.appendChild(undoBtn);
+        }
       }
       var delT=document.createElement('span');delT.textContent='✕';delT.style.cssText='cursor:pointer;color:var(--t3);font-size:11px';delT.title='Remove topic';
       delT.addEventListener('click',(function(p,id){return function(){removeSylTopic(p,id);};})(paper,t.id));
@@ -2112,6 +2275,17 @@ function markSylRevision(paper,id){
   t.lastRevisedDate=today();
   saveAll();rSyllabus();rDash();
   toast(t.revisionsDone>=SRS_INTERVALS.length?(t.name+' fully mastered! 🎉'):(t.name+' — revision '+t.revisionsDone+'/'+SRS_INTERVALS.length+' logged'));
+}
+// Undoes the most recent "✓ Revised" click — for when it was tapped by
+// mistake. Moves the topic back one step in its revision schedule.
+function undoSylRevision(paper,id){
+  var t=(SYL[paper]||[]).find(function(x){return x.id===id;});if(!t)return;
+  if(!t.revisionsDone||t.revisionsDone<=0){toast('Nothing to undo — no revisions logged yet');return;}
+  customConfirm('Undo the last revision for "'+t.name+'"? This moves it back to the previous step in its schedule.',function(){
+    t.revisionsDone=t.revisionsDone-1;
+    saveAll();rSyllabus();rDash();
+    toast('Undone — back to revision '+t.revisionsDone+'/'+SRS_INTERVALS.length);
+  });
 }
 function resetSylTopic(paper,id){
   var t=(SYL[paper]||[]).find(function(x){return x.id===id;});if(!t)return;
@@ -2398,7 +2572,7 @@ async function exportBackup(){
   var data={
     exportedAt:new Date().toISOString(), version:1,
     logs:logs, llogs:llogs, mocks:mocks, checks:checks, phase:phase, lc:lc,
-    speeds:speeds, errs:errs, planSecs:planSecs, PHS:PHS, LT:LT, CK:CK, SYL:SYL,
+    speeds:speeds, errs:errs, planSecs:planSecs, PHS:PHS, LT:LT, CK:CK, SYL:SYL, forest:forest,
     pdfMeta:pdfs, pdfData:{}
   };
   for(var i=0;i<pdfs.length;i++){
@@ -2421,7 +2595,7 @@ function importBackup(file){
         var data=JSON.parse(reader.result);
         logs=data.logs||[];llogs=data.llogs||[];mocks=data.mocks||[];checks=data.checks||{};
         phase=data.phase||0;lc=data.lc||{};speeds=data.speeds||[];errs=data.errs||[];
-        planSecs=data.planSecs||[];if(data.PHS)PHS=data.PHS;if(data.LT)LT=data.LT;if(data.CK)CK=data.CK;if(data.SYL)SYL=data.SYL;
+        planSecs=data.planSecs||[];if(data.PHS)PHS=data.PHS;if(data.LT)LT=data.LT;if(data.CK)CK=data.CK;if(data.SYL)SYL=data.SYL;if(data.forest)forest=data.forest;
         pdfs=data.pdfMeta||[];
         if(data.pdfData){for(var pid in data.pdfData){await ssBig('upsc_pdf_'+pid, data.pdfData[pid]);}}
         await _doSave();
