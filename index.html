@@ -2215,6 +2215,11 @@ function rSyllabus(){
       badge.textContent=meta.label;badge.title=t.status==='covered'?'Already covered — use Mark Revised for the revision cycle':'Click to advance status';
       badge.addEventListener('click',(function(p,id){return function(){cycleSylStatus(p,id);};})(paper,t.id));
       r.appendChild(badge);
+      if(t.status!=='pending'){
+        var restartBtn=document.createElement('button');restartBtn.className='btn btn-ghost btn-sm';restartBtn.textContent='Restart';restartBtn.title='Reset this topic back to Pending, clearing all its revision progress';
+        restartBtn.addEventListener('click',(function(p,id){return function(){resetSylTopic(p,id);};})(paper,t.id));
+        r.appendChild(restartBtn);
+      }
       // Once covered, show the spaced-repetition progress + next due date
       var dd=topicDueInfo(t);
       if(dd){
