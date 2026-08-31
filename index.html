@@ -634,13 +634,14 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
   <div class="card">
     <div class="ctitle">Full Study Log <span id="histCnt" style="color:var(--t3);font-size:8px"></span></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px;align-items:center">
-      <select id="fSubj" onchange="renderHist()" style="width:120px"><option value="">All Subjects</option><option>Anthropology</option><option>GS1</option><option>GS2</option><option>GS3</option><option>GS4</option><option>CSAT</option><option>CA</option><option>Essay</option></select>
-      <select id="fPhase" onchange="renderHist()" style="width:105px"><option value="">All Phases</option></select>
-      <input type="text" id="fSearch" oninput="renderHist()" placeholder="Search notes..." style="width:150px;font-size:10px;padding:4px 8px">
+      <select id="fSubj" onchange="histShown=histPageSize;renderHist()" style="width:120px"><option value="">All Subjects</option><option>Anthropology</option><option>GS1</option><option>GS2</option><option>GS3</option><option>GS4</option><option>CSAT</option><option>CA</option><option>Essay</option></select>
+      <select id="fPhase" onchange="histShown=histPageSize;renderHist()" style="width:105px"><option value="">All Phases</option></select>
+      <input type="text" id="fSearch" oninput="histShown=histPageSize;renderHist()" placeholder="Search notes..." style="width:150px;font-size:10px;padding:4px 8px">
       <button class="btn btn-d btn-sm" onclick="clearAll()" style="margin-left:auto">Clear All Data</button>
     </div>
     <table class="tbl"><thead><tr><th>Date</th><th>Phase</th><th>Subjects</th><th>Hrs</th><th>Ans</th><th>Score</th><th>Essays</th><th>Cases</th><th>Notes</th><th></th></tr></thead>
     <tbody id="histTb"></tbody></table>
+    <div style="text-align:center;margin-top:8px"><button class="btn btn-sm" id="histLoadMoreBtn" onclick="loadMoreHist()" style="display:none">Load 200 more</button></div>
   </div>
 </div>
 
@@ -826,10 +827,62 @@ async function _lsSet(key, val) {
   return okIdb;
 }
 
+// ------------------------------------------------------------
+// Long-term scale fix: Firestore caps a single document at 1MiB.
+// Most keys here (PHS, LT, CK, SYL, plan, etc.) are naturally bounded in
+// size and will never come close. But a handful of keys are arrays that
+// grow forever with daily use — logs, mocks, error entries, loop logs, and
+// focus sessions. Over months/years of real use these could eventually
+// approach that 1MiB ceiling and silently stop saving new entries. To make
+// that a non-issue at any timescale, these specific keys are split into
+// fixed-size chunks (separate small documents) instead of one giant
+// document — there's no realistic limit on chunk count. Everything else
+// keeps the simple single-document path. Old single-document data for
+// these keys is still read correctly (one-time fallback) and gets
+// migrated to chunked storage automatically on the next save.
+// ------------------------------------------------------------
+var GROWABLE_KEYS = ['upsc_logs','upsc_mocks','upsc_errs','upsc_ll','upsc_forest'];
+var CHUNK_SIZE = 400;
+async function ssChunkedArray(key, arr){
+  var { doc, setDoc, getDoc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+  var newChunks = Math.max(1, Math.ceil(arr.length / CHUNK_SIZE));
+  var metaRef = doc(_db, 'users', _uid, 'data', key+'__meta');
+  var prevCount = 0;
+  try { var metaSnap = await getDoc(metaRef); if (metaSnap.exists()) prevCount = metaSnap.data().chunks || 0; } catch(e) {}
+  for (var i=0; i<newChunks; i++){
+    var part = arr.slice(i*CHUNK_SIZE, (i+1)*CHUNK_SIZE);
+    await setDoc(doc(_db, 'users', _uid, 'data', key+'__c'+i), { v: part, t: Date.now() });
+  }
+  for (var j=newChunks; j<prevCount; j++){
+    try { await deleteDoc(doc(_db, 'users', _uid, 'data', key+'__c'+j)); } catch(e) {}
+  }
+  await setDoc(metaRef, { chunks: newChunks, t: Date.now() });
+}
+async function sgChunkedArray(key){
+  var { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+  var metaSnap = await getDoc(doc(_db, 'users', _uid, 'data', key+'__meta'));
+  if (!metaSnap.exists()) return null; // not migrated yet — caller falls back to legacy single-doc read
+  var chunks = metaSnap.data().chunks || 0;
+  var result = [];
+  for (var i=0; i<chunks; i++){
+    var cSnap = await getDoc(doc(_db, 'users', _uid, 'data', key+'__c'+i));
+    if (cSnap.exists()) result = result.concat(cSnap.data().v || []);
+  }
+  return result;
+}
+
 // Get value — Firestore if logged in, IndexedDB/localStorage fallback
 async function sg(key, fallback) {
   if (_db && _uid) {
     try {
+      if (GROWABLE_KEYS.indexOf(key) >= 0) {
+        var chunked = await sgChunkedArray(key);
+        _setCloudSyncStatus(true);
+        if (chunked !== null) { await _lsSet(key, chunked); return chunked; }
+        // Not migrated to chunked storage yet — read the old single-document
+        // format so nothing appears to vanish; it'll switch to chunked on
+        // the very next save.
+      }
       var { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
       var snap = await getDoc(doc(_db, 'users', _uid, 'data', key));
       _setCloudSyncStatus(true);
@@ -847,8 +900,12 @@ async function ss(key, value) {
   await _lsSet(key, value);
   if (_db && _uid) {
     try {
-      var { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
-      await setDoc(doc(_db, 'users', _uid, 'data', key), { v: value, t: Date.now() });
+      if (Array.isArray(value) && GROWABLE_KEYS.indexOf(key) >= 0) {
+        await ssChunkedArray(key, value);
+      } else {
+        var { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+        await setDoc(doc(_db, 'users', _uid, 'data', key), { v: value, t: Date.now() });
+      }
       _setCloudSyncStatus(true);
     } catch(e) {
       console.error('Firestore set failed for key "'+key+'":', e);
@@ -2615,6 +2672,7 @@ function importBackup(file){
 // ============================================================
 // HISTORY
 // ============================================================
+var histPageSize=200, histShown=200;
 function renderHist(){
   var fs=document.getElementById('fSubj').value;var fp=document.getElementById('fPhase').value;
   var fsr=document.getElementById('fSearch').value||'';
@@ -2622,13 +2680,21 @@ function renderHist(){
   if(fs)f=f.filter(function(l){return l.subjects&&l.subjects.indexOf(fs)>=0;});
   if(fp)f=f.filter(function(l){return l.phase===fp;});
   if(fsr)f=f.filter(function(l){return (l.notes||'').toLowerCase().indexOf(fsr.toLowerCase())>=0||(l.subjects||[]).join(' ').toLowerCase().indexOf(fsr.toLowerCase())>=0;});
-  var hc=document.getElementById('histCnt');if(hc)hc.textContent=f.length+' entries';
-  document.getElementById('histTb').innerHTML=f.length?f.map(function(l){
+  var hc=document.getElementById('histCnt');if(hc)hc.textContent=f.length+' entries'+(f.length>histShown?' (showing '+histShown+')':'');
+  // Long-term safety: after months/years of daily logging this list can grow
+  // into the thousands. Rendering all of them into the DOM at once would
+  // make the page sluggish, so only render a page at a time — filters still
+  // search the complete dataset, this only limits what's drawn on screen.
+  var page=f.slice(0,histShown);
+  document.getElementById('histTb').innerHTML=page.length?page.map(function(l){
     var isEd=editingId===l.id;
     var rowBg=isEd?'background:rgba(74,144,217,.06);':'';
     return'<tr style="'+rowBg+'"><td>'+fD(l.date)+'</td><td><span class="badge bg">'+(l.phase||'-')+'</span></td><td>'+(l.subjects||[]).map(function(s){return'<span class="badge bx" style="margin-right:2px">'+s+'</span>';}).join('')+'</td><td style="font-family:var(--mono)">'+(l.hours||0)+'h</td><td style="color:var(--gold2)">'+(l.answers||0)+'</td><td style="font-family:var(--mono);color:'+sc(l.score,l.scoreOf)+'">'+scLbl(l.score,l.scoreOf)+'</td><td style="color:var(--green)">'+(l.essays||0)+'</td><td style="color:var(--blue)">'+(l.cases||0)+'</td><td style="color:var(--t3);font-size:9px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(l.notes||'')+'</td><td style="white-space:nowrap">'+(isEd?'<span class="badge bb">editing</span> ':'')+'<button class="btn btn-sm" style="background:rgba(74,144,217,.1);border-color:var(--bbd);color:var(--blue)" onclick="editLog('+l.id+')">edit</button> <button class="btn btn-d btn-sm" onclick="delLog('+l.id+')">x</button></td></tr>';
   }).join(''):'<tr><td colspan="10" class="empty">No entries found</td></tr>';
+  var moreBtn=document.getElementById('histLoadMoreBtn');
+  if(moreBtn)moreBtn.style.display=(f.length>histShown)?'inline-block':'none';
 }
+function loadMoreHist(){histShown+=histPageSize;renderHist();}
 function rHist(){renderHist();}
 function delLog(id){
   if(editingId===id)cancelEdit();
