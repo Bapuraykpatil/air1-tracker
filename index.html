@@ -711,6 +711,12 @@ var SUBJS=['Anthropology','GS1','GS2','GS3','GS4','CSAT','CA','Essay'];
 var SCOLS={Anthropology:'#c9a84c',GS1:'#4a90d9',GS2:'#3fb97a',GS3:'#e05565',GS4:'#8b6fd4',CSAT:'#d4834a',CA:'#4ab8d9',Essay:'#d4a84a'};
 var MCOLS={GS1:'#4a90d9',GS2:'#c9a84c',GS3:'#3fb97a',GS4:'#8b6fd4','Anthro P1':'#e05565','Anthro P2':'#e08065',Prelims:'#4ab8d9',Essay:'#d4a84a','Full Mains':'#d4834a',CSAT:'#4a90d9'};
 var TGTS={GS1:52,GS2:58,GS3:54,GS4:58,'Anthro P1':66,'Anthro P2':66,Essay:64};
+// Raw-marks targets (out of 250, the real UPSC Mains paper scale) — used
+// specifically by the "Subject Best vs Target" chart and Mock Scores'
+// "Best GS" stat, which show actual marks rather than normalized %.
+// TGTS above (percentages) stays as-is for the charts that blend papers
+// of different max-mark scales, where a % is the only fair comparison.
+var TGTS_MARKS={GS1:120,GS2:120,GS3:120,GS4:120,'Anthro P1':165,'Anthro P2':165,Essay:160};
 var CAT={A:{label:'Concept Gap',color:'var(--gold2)',bg:'var(--gdim)',bd:'var(--gb)'},B:{label:'CA Gap',color:'var(--blue)',bg:'var(--bbg)',bd:'var(--bbd)'},C:{label:'Silly Mistake',color:'var(--orange)',bg:'var(--obg)',bd:'rgba(212,131,74,.3)'},D:{label:'Trap',color:'var(--red)',bg:'var(--rbg)',bd:'var(--rbd)'}};
 var PLAN_TPLS=[
   {title:'Daily Schedule',color:'#c9a84c',content:'4:00 AM  Wake\n4:05 AM  Anthropology 45 min\n4:50 AM  CA/GS 30 min\n6:00 AM  Class 2 hrs\n7:00 PM  Main GS 60 min\n8:00 PM  Revision 30 min\n8:30 PM  Answer Writing\n9:30 PM  SLEEP'},
@@ -1751,10 +1757,10 @@ function rMockTrend(){
 }
 function rSubjBest(){
   var sps=['GS1','GS2','GS3','GS4','Anthro P1','Anthro P2','Essay'];
-  var bests=sps.map(function(p){var pm=mocks.filter(function(m){return m.type===p&&m.outOf;});return pm.length?Math.round(Math.max.apply(null,pm.map(function(m){return +m.score/+m.outOf*100;}))):0;});
-  var tgts=sps.map(function(p){return TGTS[p]||52;});
-  mkC('cSubjBest','bar',{labels:sps.map(function(s){return s.replace(' P','P');}),datasets:[{label:'Best',data:bests,backgroundColor:sps.map(function(s){return (MCOLS[s]||'#c9a84c')+'99';}),borderColor:bests.map(function(b,i){return b>=tgts[i]?'#3fb97a':'transparent';}),borderWidth:2,borderRadius:3,borderSkipped:false},{label:'Target',data:tgts,type:'line',borderColor:'rgba(255,255,255,.18)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,backgroundColor:'transparent'}]},{plugins:{legend:{display:true,labels:{color:'#52504c',boxWidth:9,padding:8,font:{size:8}}}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,max:100,ticks:{callback:function(v){return v+'%';}},grid:{color:'rgba(255,255,255,.03)'}}}});
-  var ins=document.getElementById('subjIns');if(ins){ins.innerHTML='';sps.forEach(function(p,i){if(bests[i]>0){var gap=bests[i]-tgts[i];ins.innerHTML+='<div class="insight '+(gap>=0?'green':'red')+'" style="padding:4px 7px;margin-bottom:4px">'+p+': '+bests[i]+'% '+(gap>=0?'(+'+gap+'% above)':'('+gap+'% below)')+'</div>';}});}
+  var bests=sps.map(function(p){var pm=mocks.filter(function(m){return m.type===p&&m.outOf;});return pm.length?Math.round(Math.max.apply(null,pm.map(function(m){return +m.score;}))):0;});
+  var tgts=sps.map(function(p){return TGTS_MARKS[p]||120;});
+  mkC('cSubjBest','bar',{labels:sps.map(function(s){return s.replace(' P','P');}),datasets:[{label:'Best',data:bests,backgroundColor:sps.map(function(s){return (MCOLS[s]||'#c9a84c')+'99';}),borderColor:bests.map(function(b,i){return b>=tgts[i]?'#3fb97a':'transparent';}),borderWidth:2,borderRadius:3,borderSkipped:false},{label:'Target',data:tgts,type:'line',borderColor:'rgba(255,255,255,.18)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,backgroundColor:'transparent'}]},{plugins:{legend:{display:true,labels:{color:'#52504c',boxWidth:9,padding:8,font:{size:8}}}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,max:250,ticks:{stepSize:50},grid:{color:'rgba(255,255,255,.03)'}}}});
+  var ins=document.getElementById('subjIns');if(ins){ins.innerHTML='';sps.forEach(function(p,i){if(bests[i]>0){var gap=bests[i]-tgts[i];ins.innerHTML+='<div class="insight '+(gap>=0?'green':'red')+'" style="padding:4px 7px;margin-bottom:4px">'+p+': '+bests[i]+'/250 '+(gap>=0?'(+'+gap+' above target)':'('+gap+' below target)')+'</div>';}});}
 }
 function rCumAns(){
   var sl=logs.slice().sort(function(a,b){return a.date.localeCompare(b.date);});
@@ -2391,12 +2397,12 @@ function resetSyllabusToOfficial(){
 // MOCKS
 // ============================================================
 function rMocks(){
-  var gs=mocks.filter(function(m){return ['GS1','GS2','GS3','GS4'].indexOf(m.type)>=0&&m.outOf;}).map(function(m){return +m.score/+m.outOf*100;});
+  var gs=mocks.filter(function(m){return ['GS1','GS2','GS3','GS4'].indexOf(m.type)>=0&&m.outOf;}).map(function(m){return +m.score;});
   var an=mocks.filter(function(m){return m.type.indexOf('Anthro')===0&&m.outOf;}).map(function(m){return +m.score;});
   var pr=mocks.filter(function(m){return m.type==='Prelims';}).map(function(m){return +m.score;});
   var av=mocks.filter(function(m){return m.outOf;}).map(function(m){return +m.score/+m.outOf*100;});
   document.getElementById('mockStats').innerHTML=
-    '<div class="stat"><div class="slbl">Best GS %</div><div class="sval">'+(gs.length?Math.round(Math.max.apply(null,gs))+'%':'-')+'</div><div class="ssub">Target 85/250</div></div>'+
+    '<div class="stat"><div class="slbl">Best GS Marks</div><div class="sval">'+(gs.length?Math.max.apply(null,gs):'-')+'</div><div class="ssub">Target 120+/250</div></div>'+
     '<div class="stat"><div class="slbl">Best Anthro</div><div class="sval" style="color:var(--green)">'+(an.length?Math.max.apply(null,an):'-')+'</div><div class="ssub">Target 170/250</div></div>'+
     '<div class="stat"><div class="slbl">Best Prelims</div><div class="sval" style="color:var(--blue)">'+(pr.length?Math.max.apply(null,pr):'-')+'</div><div class="ssub">Target 120+</div></div>'+
     '<div class="stat"><div class="slbl">Avg Score</div><div class="sval" style="color:var(--purple)">'+(av.length?Math.round(av.reduce(function(a,b){return a+b;},0)/av.length)+'%':'-')+'</div><div class="ssub">'+mocks.length+' mocks taken</div></div>';
