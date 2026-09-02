@@ -258,7 +258,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     <span style="cursor:pointer;color:var(--t3)" onclick="dismissBackupReminder()" title="Remind me later today">✕</span>
   </div>
   <div class="card" style="border-color:var(--gb)">
-    <div class="ctitle">Focus Session <span class="ctv" id="forestStatsSummary"></span></div>
+    <div class="ctitle">Focus Session <span class="ctv" id="forestStatsSummary"></span> <button class="btn btn-d btn-sm" onclick="resetForest()">Reset Forest</button></div>
     <div id="focusIdle">
       <div class="frow">
         <div class="fg" style="flex:0 0 auto">
@@ -1513,8 +1513,21 @@ function rHm(){
   while(cur<=tdDt){var w=[];for(var i=0;i<7;i++){w.push(cur.toISOString().slice(0,10));cur.setDate(cur.getDate()+1);}weeks.push(w);}
   var rss=rs.toISOString().slice(0,10);
 
-  var ml='<div style="display:flex;gap:3px;margin-bottom:3px">';var lm=-1;
-  weeks.forEach(function(w){var m=parseInt(w[0].slice(5,7))-1;var lbl='';if(m!==lm){lbl=mn[m];lm=m;}ml+='<div style="width:11px;font-family:var(--mono);font-size:8px;color:var(--t3);white-space:nowrap;overflow:visible">'+lbl+'</div>';});ml+='</div>';
+  var ml='<div style="display:flex;gap:3px;margin-bottom:3px">';var lm=-1;var lastLabelIdx=-99;
+  weeks.forEach(function(w,wi){
+    var m=parseInt(w[0].slice(5,7))-1;
+    var lbl='';
+    // Only show a new month's label if enough columns have passed since the
+    // last one was drawn — otherwise short/partial months at the edge of
+    // the visible range render their label on top of the next one's,
+    // producing garbled overlapping text like "JunJul".
+    if(m!==lm){
+      if(wi-lastLabelIdx>=3){lbl=mn[m];lastLabelIdx=wi;}
+      lm=m;
+    }
+    ml+='<div style="width:11px;font-family:var(--mono);font-size:8px;color:var(--t3);white-space:nowrap;overflow:visible">'+lbl+'</div>';
+  });
+  ml+='</div>';
 
   var cells='<div style="display:flex;gap:3px">';
   weeks.forEach(function(w){
@@ -1715,6 +1728,16 @@ function renderForestStrip(){
     span.title=fD(f.date)+' — '+f.minutes+'min'+(f.subject?' — '+f.subject:'')+(f.completed?' (completed)':' (died)');
     span.textContent=f.completed?'🌳':'🥀';
     el.appendChild(span);
+  });
+}
+// Wipes all focus-session history (e.g. to clear out test sessions before
+// starting for real). Only touches the forest — never your logs, syllabus,
+// or anything else.
+function resetForest(){
+  customConfirm('Clear all Focus Session history? This removes every tree (completed and died) permanently — your logs, syllabus, and everything else are untouched.',function(){
+    forest=[];
+    saveAll();renderForestStrip();
+    toast('Forest reset — start fresh whenever you\'re ready');
   });
 }
 // Leaving the tab/app mid-session kills the tree — the whole point of the
