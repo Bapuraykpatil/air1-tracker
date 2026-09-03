@@ -1514,6 +1514,7 @@ function rHm(){
   var rss=rs.toISOString().slice(0,10);
 
   var ml='<div style="display:flex;gap:3px;margin-bottom:3px">';var lm=-1;var lastLabelIdx=-99;
+  var mlabels=[];
   weeks.forEach(function(w,wi){
     var m=parseInt(w[0].slice(5,7))-1;
     var lbl='';
@@ -1525,6 +1526,21 @@ function rHm(){
       if(wi-lastLabelIdx>=3){lbl=mn[m];lastLabelIdx=wi;}
       lm=m;
     }
+    mlabels.push(lbl);
+  });
+  // The current (most recent) month must always be labeled even if it's too
+  // short to have earned one above — that's the one actually relevant to
+  // "today," so it should never be the one left blank.
+  var lastMonth=parseInt(weeks[weeks.length-1][0].slice(5,7))-1;
+  if(mlabels.indexOf(mn[lastMonth])<0){
+    var startIdx=0;
+    for(var i=weeks.length-1;i>=0;i--){
+      var mi=parseInt(weeks[i][0].slice(5,7))-1;
+      if(mi!==lastMonth){startIdx=i+1;break;}
+    }
+    mlabels[startIdx]=mn[lastMonth];
+  }
+  mlabels.forEach(function(lbl){
     ml+='<div style="width:11px;font-family:var(--mono);font-size:8px;color:var(--t3);white-space:nowrap;overflow:visible">'+lbl+'</div>';
   });
   ml+='</div>';
