@@ -1528,17 +1528,14 @@ function rHm(){
     }
     mlabels.push(lbl);
   });
-  // The current (most recent) month must always be labeled even if it's too
-  // short to have earned one above — that's the one actually relevant to
-  // "today," so it should never be the one left blank.
-  var lastMonth=parseInt(weeks[weeks.length-1][0].slice(5,7))-1;
+  // The current (most recent) month must always be labeled even if the
+  // week-column containing today started in the previous month (e.g. a
+  // week starting Mon Aug 31st whose later days fall in September) — use
+  // today's actual month, not the column's start-of-week month, so "today"
+  // always shows the month it's really in.
+  var lastMonth=parseInt(td.slice(5,7))-1;
   if(mlabels.indexOf(mn[lastMonth])<0){
-    var startIdx=0;
-    for(var i=weeks.length-1;i>=0;i--){
-      var mi=parseInt(weeks[i][0].slice(5,7))-1;
-      if(mi!==lastMonth){startIdx=i+1;break;}
-    }
-    mlabels[startIdx]=mn[lastMonth];
+    mlabels[mlabels.length-1]=mn[lastMonth];
   }
   mlabels.forEach(function(lbl){
     ml+='<div style="width:11px;font-family:var(--mono);font-size:8px;color:var(--t3);white-space:nowrap;overflow:visible">'+lbl+'</div>';
