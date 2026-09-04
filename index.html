@@ -711,11 +711,6 @@ var SUBJS=['Anthropology','GS1','GS2','GS3','GS4','CSAT','CA','Essay'];
 var SCOLS={Anthropology:'#c9a84c',GS1:'#4a90d9',GS2:'#3fb97a',GS3:'#e05565',GS4:'#8b6fd4',CSAT:'#d4834a',CA:'#4ab8d9',Essay:'#d4a84a'};
 var MCOLS={GS1:'#4a90d9',GS2:'#c9a84c',GS3:'#3fb97a',GS4:'#8b6fd4','Anthro P1':'#e05565','Anthro P2':'#e08065',Prelims:'#4ab8d9',Essay:'#d4a84a','Full Mains':'#d4834a',CSAT:'#4a90d9'};
 var TGTS={GS1:52,GS2:58,GS3:54,GS4:58,'Anthro P1':66,'Anthro P2':66,Essay:64};
-// Raw-marks targets (out of 250, the real UPSC Mains paper scale) — used
-// specifically by the "Subject Best vs Target" chart and Mock Scores'
-// "Best GS" stat, which show actual marks rather than normalized %.
-// TGTS above (percentages) stays as-is for the charts that blend papers
-// of different max-mark scales, where a % is the only fair comparison.
 var TGTS_MARKS={GS1:120,GS2:120,GS3:120,GS4:120,'Anthro P1':165,'Anthro P2':165,Essay:160};
 var CAT={A:{label:'Concept Gap',color:'var(--gold2)',bg:'var(--gdim)',bd:'var(--gb)'},B:{label:'CA Gap',color:'var(--blue)',bg:'var(--bbg)',bd:'var(--bbd)'},C:{label:'Silly Mistake',color:'var(--orange)',bg:'var(--obg)',bd:'rgba(212,131,74,.3)'},D:{label:'Trap',color:'var(--red)',bg:'var(--rbg)',bd:'var(--rbd)'}};
 var PLAN_TPLS=[
@@ -743,14 +738,6 @@ var QUOTES=[
 
 // ============================================================
 // FIREBASE STORAGE — syncs across all devices
-// Local mirror uses IndexedDB (much larger quota and more durable
-// across browser restarts than localStorage, which some browsers
-// clear aggressively for rarely-visited or file:// pages).
-// If a Firestore write ever fails while signed in, we surface a
-// visible warning instead of only logging to console — silent
-// failures are exactly what causes "data vanished after a few
-// days": writes look like they worked, but never reached the
-// cloud, so when the local copy is later cleared, nothing is left.
 // ============================================================
 var _db = null;       // Firestore instance
 var _uid = null;      // Current user ID
@@ -770,7 +757,6 @@ function _setCloudSyncStatus(ok, detail) {
   }
 }
 
-// IndexedDB helpers (shared with PDF storage further below — same db/store)
 var _dbPromise = null;
 function _openDB(){
   if (_dbPromise) return _dbPromise;
@@ -807,9 +793,6 @@ function idbSet(key, value){
   });
 }
 
-// Local mirror — IndexedDB primary, localStorage as a small synchronous
-// backup (skipped for large values). Migrates any pre-existing
-// localStorage data into IndexedDB automatically.
 async function _lsGet(key, fb) {
   try {
     var v = await idbGet('air1_'+key);
@@ -833,20 +816,6 @@ async function _lsSet(key, val) {
   return okIdb;
 }
 
-// ------------------------------------------------------------
-// Long-term scale fix: Firestore caps a single document at 1MiB.
-// Most keys here (PHS, LT, CK, SYL, plan, etc.) are naturally bounded in
-// size and will never come close. But a handful of keys are arrays that
-// grow forever with daily use — logs, mocks, error entries, loop logs, and
-// focus sessions. Over months/years of real use these could eventually
-// approach that 1MiB ceiling and silently stop saving new entries. To make
-// that a non-issue at any timescale, these specific keys are split into
-// fixed-size chunks (separate small documents) instead of one giant
-// document — there's no realistic limit on chunk count. Everything else
-// keeps the simple single-document path. Old single-document data for
-// these keys is still read correctly (one-time fallback) and gets
-// migrated to chunked storage automatically on the next save.
-// ------------------------------------------------------------
 var GROWABLE_KEYS = ['upsc_logs','upsc_mocks','upsc_errs','upsc_ll','upsc_forest'];
 var CHUNK_SIZE = 400;
 async function ssChunkedArray(key, arr){
@@ -867,7 +836,7 @@ async function ssChunkedArray(key, arr){
 async function sgChunkedArray(key){
   var { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
   var metaSnap = await getDoc(doc(_db, 'users', _uid, 'data', key+'__meta'));
-  if (!metaSnap.exists()) return null; // not migrated yet — caller falls back to legacy single-doc read
+  if (!metaSnap.exists()) return null;
   var chunks = metaSnap.data().chunks || 0;
   var result = [];
   for (var i=0; i<chunks; i++){
@@ -877,7 +846,6 @@ async function sgChunkedArray(key){
   return result;
 }
 
-// Get value — Firestore if logged in, IndexedDB/localStorage fallback
 async function sg(key, fallback) {
   if (_db && _uid) {
     try {
@@ -885,9 +853,6 @@ async function sg(key, fallback) {
         var chunked = await sgChunkedArray(key);
         _setCloudSyncStatus(true);
         if (chunked !== null) { await _lsSet(key, chunked); return chunked; }
-        // Not migrated to chunked storage yet — read the old single-document
-        // format so nothing appears to vanish; it'll switch to chunked on
-        // the very next save.
       }
       var { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
       var snap = await getDoc(doc(_db, 'users', _uid, 'data', key));
@@ -901,7 +866,6 @@ async function sg(key, fallback) {
   return await _lsGet(key, fallback);
 }
 
-// Set value — Firestore if logged in, always local mirror too
 async function ss(key, value) {
   await _lsSet(key, value);
   if (_db && _uid) {
@@ -920,7 +884,6 @@ async function ss(key, value) {
   }
 }
 
-// Firebase init — called after config is provided
 async function initFirebase(config) {
   var { initializeApp, getApps } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
   var { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, setPersistence, indexedDBLocalPersistence, browserLocalPersistence } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
@@ -928,8 +891,6 @@ async function initFirebase(config) {
   var app = getApps().length ? getApps()[0] : initializeApp(config);
   _auth = getAuth(app);
   _db   = getFirestore(app);
-  // Explicitly request the most durable auth persistence available so the
-  // signed-in session survives browser restarts as reliably as possible.
   try { await setPersistence(_auth, indexedDBLocalPersistence); }
   catch(e) { try { await setPersistence(_auth, browserLocalPersistence); } catch(e2) { console.warn('Could not set auth persistence:', e2); } }
   window._fbAuth = _auth;
@@ -942,9 +903,6 @@ async function initFirebase(config) {
         if (!resolved) { resolved = true; resolve(user); }
       } else {
         _uid = null;
-        // If this fires AFTER initial resolution (session expired/signed out
-        // elsewhere mid-use), send the person back to the login screen
-        // instead of silently continuing with no cloud connection.
         if (resolved) {
           var ov = document.getElementById('loginOverlay');
           if (ov && ov.style.display === 'none') {
@@ -959,7 +917,6 @@ async function initFirebase(config) {
   });
 }
 
-// Sign in
 async function signInWithGoogle() {
   var btn = document.getElementById('googleSignInBtn');
   var err = document.getElementById('loginErr');
@@ -974,7 +931,6 @@ async function signInWithGoogle() {
     btn.disabled=true;
     var { signInWithPopup } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
     await signInWithPopup(window._fbAuth, window._fbProvider);
-    // onAuthStateChanged will handle the rest
   } catch(e) {
     btn.innerHTML='<svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>Continue with Google';
     btn.disabled=false;
@@ -993,24 +949,19 @@ async function signOut() {
   });
 }
 
-// Config paste handler
 async function applyFirebaseConfig() {
   var raw = document.getElementById('configInput').value.trim();
   var err = document.getElementById('configErr');
   err.style.display='none';
   try {
-    // Parse config — allow both JS object and JSON
     var cleaned = raw.replace(/^const\s+firebaseConfig\s*=\s*/, '').replace(/;$/, '');
     var config = Function('return ('+cleaned+')')();
     if (!config.apiKey || !config.projectId) throw new Error('Missing apiKey or projectId');
-    // Save config to localStorage so it loads next time
     localStorage.setItem('air1_fb_config', JSON.stringify(config));
-    // Init Firebase
     var user = await initFirebase(config);
     if (user) {
       onUserSignedIn(user);
     } else {
-      // Config good, now sign in
       document.getElementById('setupGuide').style.display='none';
       signInWithGoogle();
     }
@@ -1026,24 +977,18 @@ function showSetupGuide() {
 }
 
 async function onUserSignedIn(user) {
-  // Show loading, hide login
   document.getElementById('loginOverlay').style.display='none';
   var ov=document.getElementById('loadOverlay');
   if(ov){ov.style.display='flex';}
   var lm=document.getElementById('loadMsg');
   if(lm)lm.textContent='Syncing your data from cloud...';
-  // Show user info in header
   var ui=document.getElementById('userInfo');
   if(ui){ui.style.display='flex';ui.style.removeProperty('display');ui.style.display='flex';}
   var av=document.getElementById('userAvatar');
   if(av&&user.photoURL)av.src=user.photoURL;
   var un=document.getElementById('userName');
   if(un)un.textContent=user.displayName?user.displayName.split(' ')[0]:'';
-  // Load data and render
   await load();
-  // If a focus session was left running unresolved (tab closed, browser
-  // crashed, etc.) it never got the chance to complete cleanly — that
-  // counts as leaving, so the tree dies, matching Forest's core rule.
   var leftoverSession = await sg(KACTIVESESSION, null);
   if (leftoverSession) {
     forest.push({id:Date.now(), date:today(), minutes:leftoverSession.durationMin, subject:leftoverSession.subject||'', completed:false});
@@ -1098,19 +1043,12 @@ async function load() {
   }
   if (phase >= PHS.length) phase = PHS.length - 1;
   if (phase < 0) phase = 0;
-  // One-time cleanup: an earlier version auto-created log entries when you
-  // ticked checklist boxes. That's been reverted — checklist and Log Entry
-  // are separate measurements now — so remove any leftover auto-created
-  // entries to avoid double-counting against what you log manually.
   var beforeCleanup=logs.length;
   logs=logs.filter(function(l){return !l.fromChecklist;});
   if(logs.length!==beforeCleanup)saveAll();
 }
 
 function seedSyllabusDefaults(){
-  // Fresh paper-wise seed with real syllabus content. Fully editable/removable
-  // afterwards — this only runs automatically on first-ever use, or when the
-  // user explicitly hits "Reset to Official Syllabus".
   SYL={};
   Object.keys(SYL_DEF).forEach(function(paper){
     SYL[paper] = SYL_DEF[paper].map(function(name, i){
@@ -1118,10 +1056,6 @@ function seedSyllabusDefaults(){
     });
   });
 }
-// Keeps the Log Entry "which topic did you read" dropdown in sync with
-// whatever papers/topics currently exist in the Syllabus tab, grouped by
-// paper. Value format: "paper|||topicId" (||| is safe — never appears in
-// paper/topic names).
 function refreshTopicSelect(){
   var sel=document.getElementById('lgTopic');if(!sel)return;
   var cur=sel.value;
@@ -1141,13 +1075,9 @@ function refreshTopicSelect(){
   var opts=Array.prototype.map.call(sel.options,function(o){return o.value;});
   sel.value=opts.indexOf(cur)>=0?cur:'';
 }
-// Triggered when the Log Entry topic dropdown changes. Picking "+ Add a new
-// topic manually..." opens a two-step flow (which paper, then topic name)
-// so a missing subtopic can be added without ever leaving Log Entry — it's
-// added to the Syllabus tab's data too, and gets selected for this entry.
 function handleLgTopicChange(sel){
   if(sel.value!=='__ADD_NEW__')return;
-  sel.value=''; // reset display immediately; will be set properly on success
+  sel.value='';
   var existingPapers=Object.keys(SYL);
   customPrompt('Which paper is this topic under? Existing: '+(existingPapers.join(', ')||'(none yet)')+'. Type an existing name exactly to add into it, or a new name to create a new paper:', existingPapers[0]||'', function(paperName){
     if(!paperName)return;paperName=paperName.trim();if(!paperName)return;
@@ -1166,11 +1096,6 @@ function handleLgTopicChange(sel){
     });
   });
 }
-// Called when a log entry that links to a syllabus topic is saved (new
-// entries only, not edits, so re-editing hours/notes doesn't accidentally
-// advance the revision schedule again). First time studying a topic starts
-// its spaced-repetition clock (+1,4,7,15,30,60,90 days); studying an
-// already-covered topic again counts as completing that revision.
 function applyTopicStudyFromLog(topicValue, logDate){
   if(!topicValue)return null;
   var parts=topicValue.split('|||');
@@ -1187,7 +1112,6 @@ function applyTopicStudyFromLog(topicValue, logDate){
   return {paper:paper, id:id, name:t.name};
 }
 
-// Debounced save — batches rapid back-to-back mutations into one write
 function saveAll() {
   if (_saveTimer) clearTimeout(_saveTimer);
   _saveTimer = setTimeout(_doSave, 300);
@@ -1243,11 +1167,6 @@ async function saveJS() {
 // UTILS
 // ============================================================
 function toast(m){var t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2200);}
-// In-page confirm/prompt replacements. Native window.confirm()/prompt() are
-// silently blocked inside sandboxed iframes (e.g. Claude's own artifact
-// preview panel), which makes delete/reset buttons look broken there even
-// though the button click worked. These custom modals always work, and also
-// look consistent with the rest of the app.
 function customConfirm(msg, onYes){
   var m=document.createElement('div');m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:600;display:flex;align-items:center;justify-content:center;padding:20px';
   var box=document.createElement('div');box.style.cssText='background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:18px 20px;max-width:380px;width:100%';
@@ -1350,9 +1269,6 @@ function rDash(){
   si('recentTb').innerHTML=rec.length?rec.map(function(l){return'<tr><td>'+fD(l.date)+'</td><td>'+(l.subjects||[]).map(function(s){return'<span class="badge bg" style="margin-right:2px">'+s+'</span>';}).join('')+'</td><td style="color:var(--t2)">'+(l.hours||0)+'h</td><td style="color:var(--gold2)">'+(l.answers||0)+'</td><td style="font-family:var(--mono);color:'+sc(l.score,l.scoreOf)+'">'+scLbl(l.score,l.scoreOf)+'</td><td style="color:var(--green)">'+(l.essays||0)+'</td><td style="color:var(--blue)">'+(l.cases||0)+'</td><td style="color:var(--t3);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(l.notes||'')+'</td><td><button class="btn btn-sm" style="background:rgba(74,144,217,.1);border-color:var(--bbd);color:var(--blue)" onclick="editLog('+l.id+')">edit</button></td></tr>';}).join(''):'<tr><td colspan="9" class="empty">No entries yet</td></tr>';
 }
 
-// A journey this long (many months, even years) shouldn't rely on you
-// remembering to back up. Nudge every ~30 days if no export has happened,
-// without being annoying — dismissing just snoozes it for today's session.
 function goToDocs(){
   var target=null;
   document.querySelectorAll('.nb').forEach(function(b){if(b.textContent.trim()==='Documents')target=b;});
@@ -1367,7 +1283,7 @@ function checkBackupReminder(){
   var dismissedToday=false;
   try{dismissedToday=sessionStorage.getItem('air1_backup_dismissed_'+today())==='1';}catch(e){}
   if(dismissedToday){el.style.display='none';return;}
-  if(logs.length<5){el.style.display='none';return;} // not enough data yet to worry about
+  if(logs.length<5){el.style.display='none';return;}
   var daysSince=lastBackupDate?Math.floor((new Date(today())-new Date(lastBackupDate))/(1000*60*60*24)):9999;
   if(daysSince>=30){
     el.style.display='flex';
@@ -1377,9 +1293,6 @@ function checkBackupReminder(){
     el.style.display='none';
   }
 }
-// Shows every syllabus topic whose spaced-repetition revision is due today
-// or overdue, right on the Dashboard — this is the "check what's in red
-// every day" list.
 function renderDashDueRevisions(){
   var wrap=document.getElementById('dashDueRevisions');var list=document.getElementById('dashDueList');
   if(!wrap||!list)return;
@@ -1432,24 +1345,11 @@ function rCk(){
     el.appendChild(div);
   });
 }
-// Checking a checklist item now actually does something: if that item has
-// hours, answers, a subject, or a linked syllabus topic configured (set
-// this up per-item in the Phases tab), checking it for today creates a
-// real log entry — same as if you'd filled out Log Entry by hand — and
-// advances that topic's revision schedule. Unchecking removes only the
-// entry it created (never touches manually-added entries).
 function togCk(k){
-  // Checklist tracks whether you stuck to today's planned schedule — a
-  // separate measurement from Log Entry. It never creates or removes log
-  // entries, so it can never double-count against what you log manually.
   if(!checks[today()])checks[today()]={};
   checks[today()][k]=!checks[today()][k];
   saveAll();rCk();
 }
-// Sum of planned hours for checklist items that have an Hrs value set,
-// vs. how many of those hours are actually ticked off today. This is a
-// schedule-adherence measurement, kept deliberately separate from the
-// Total Study Hours stat (which comes only from real Log Entry data).
 function todaysScheduledHours(){
   var t=today();var tc=checks[t]||{};
   var target=0,done=0;
@@ -1458,9 +1358,6 @@ function todaysScheduledHours(){
   });
   return {target:target,done:done};
 }
-// One-click helper: reads labels like "4:00 AM - 5:30 AM -> Anthropology"
-// and fills in an Hours value automatically, purely for the scheduled-hours
-// measurement above — it does not create or affect any log entries.
 function autoFillChecklistFromLabels(){
   var timeRe=/(\d{1,2}:\d{2})\s*([AaPp][Mm])\s*-\s*(\d{1,2}:\d{2})\s*([AaPp][Mm])/;
   function toMinutes(t,ap){
@@ -1477,7 +1374,7 @@ function autoFillChecklistFromLabels(){
       var endMin=toMinutes(m[3],m[4]);
       var diff=endMin-startMin;
       if(diff<0)diff+=24*60;
-      var hrs=Math.round((diff/60)*4)/4; // nearest 0.25h
+      var hrs=Math.round((diff/60)*4)/4;
       if(hrs>0){item.hours=hrs;changed++;}
     }
   });
@@ -1491,18 +1388,27 @@ function setHm(m,btn){
   if(btn&&btn.classList)btn.classList.add('on');
   rHm();
 }
+
+// ------------------------------------------------------------
+// ACTIVITY HEATMAP — GitHub-style grid, Monday-first weeks.
+// Fixed month labeling: a column is labeled with a month name only when
+// that column is the FIRST week to contain day 1 of that month (i.e. the
+// week that actually starts the month), not just "month of the week's
+// Monday changed". This guarantees every month that has any visible days
+// gets exactly one correctly-placed label, even for short/partial months
+// at the start or end of the range, and never mislabels a column whose
+// Monday fell in the previous month while day 1 of the new month is
+// later in that same week.
+// ------------------------------------------------------------
 function rHm(){
   var wrap=document.getElementById('hmWrap');if(!wrap)return;
   var dm={};logs.forEach(function(l){dm[l.date]=(dm[l.date]||0)+(+l.hours||0);});
   var td=today();var tdDt=new Date(td);
 
-  // planStart = manually set journey start date (saved in settings)
-  // Days before planStart are neutral grey — not missed, not studied
   var planStart = journeyStart || today();
 
   var rs;
   if(hmM===0){
-    // 'All' view: start from planStart's month beginning
     rs=new Date(planStart);rs=new Date(rs.getFullYear(),rs.getMonth(),1);
   } else {
     rs=new Date(tdDt);rs.setDate(1);rs.setMonth(rs.getMonth()-(hmM-1));
@@ -1513,28 +1419,22 @@ function rHm(){
   while(cur<=tdDt){var w=[];for(var i=0;i<7;i++){w.push(cur.toISOString().slice(0,10));cur.setDate(cur.getDate()+1);}weeks.push(w);}
   var rss=rs.toISOString().slice(0,10);
 
-  // Dense GitHub-style grid: one column per week (7 rows each), not one
-  // tall column per month. Labels are still assigned by month, with two
-  // safeguards: a new month's label is skipped if it would land right on
-  // top of the previous one (short/partial months at the edge of the
-  // range), and the current month is always force-labeled at the very
-  // last column using today's actual date — not the week-start date —
-  // so "today" never gets miscategorized into the wrong month's label.
-  var ml='<div style="display:flex;gap:3px;margin-bottom:3px">';var lm=-1;var lastLabelIdx=-99;
-  var mlabels=[];
+  // Correct month labeling: walk every day in order; the first time we
+  // encounter a given YYYY-MM, label the WEEK COLUMN that day falls in
+  // with that month's short name. Each month key is only ever used once.
+  var mlabels=weeks.map(function(){return '';});
+  var seenMonth={};
   weeks.forEach(function(w,wi){
-    var m=parseInt(w[0].slice(5,7))-1;
-    var lbl='';
-    if(m!==lm){
-      if(wi-lastLabelIdx>=3){lbl=mn[m];lastLabelIdx=wi;}
-      lm=m;
+    for(var i=0;i<w.length;i++){
+      var mkey=w[i].slice(0,7); // YYYY-MM
+      if(!seenMonth[mkey]){
+        seenMonth[mkey]=true;
+        mlabels[wi]=mn[parseInt(w[i].slice(5,7))-1];
+        break; // one label per week column max
+      }
     }
-    mlabels.push(lbl);
   });
-  var lastMonth=parseInt(td.slice(5,7))-1;
-  if(mlabels.indexOf(mn[lastMonth])<0){
-    mlabels[mlabels.length-1]=mn[lastMonth];
-  }
+  var ml='<div style="display:flex;gap:3px;margin-bottom:3px">';
   mlabels.forEach(function(lbl){
     ml+='<div style="width:11px;font-family:var(--mono);font-size:8px;color:var(--t3);white-space:nowrap;overflow:visible">'+lbl+'</div>';
   });
@@ -1550,21 +1450,16 @@ function rHm(){
       var bd=ds===td?' style="outline:1.5px solid var(--gold2);outline-offset:1px"':'';
 
       if(ds>td){
-        // Future day — dim neutral
         cls+=' fut';
       } else if(ds<planStart){
-        // Before journey started — neutral grey, no tooltip (not a missed day)
         cls+=' fut';
         tip='';
       } else if(ds<rss){
-        // In range but before display window start — dim
         cls+=' fut';
       } else if(h===0){
-        // In range, after plan start, no study — genuinely missed
         cls+=' miss';
         tip=ds+': missed';
       } else {
-        // Studied
         cls+=' '+(h<1.5?'l1':h<3?'l2':h<5?'l3':'l4');
         tip=ds+': '+h.toFixed(1)+'h';
       }
@@ -1575,7 +1470,6 @@ function rHm(){
   cells+='</div>';
   wrap.innerHTML=ml+cells;
 
-  // Stats: only count days from planStart onwards (not before journey began)
   var effectiveStart=planStart>rss?planStart:rss;
   var fl=logs.filter(function(l){return l.date>=effectiveStart&&l.date<=td;});
   var ad2=[].concat(fl.map(function(l){return l.date;})).filter(function(v,i,a){return a.indexOf(v)===i;}).length;
@@ -1605,9 +1499,6 @@ function updateCD(){
   var mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   document.getElementById('cdLabel').textContent='Target: '+target.getDate()+' '+mn[target.getMonth()]+' '+target.getFullYear();
   document.getElementById('cdDays').style.color=diff<60?'var(--red)':diff<180?'var(--gold2)':'var(--green)';
-  // Once the target date has passed, prompt to move on to the next milestone
-  // (e.g. Prelims → Mains) instead of leaving a stale, expired countdown.
-  // This never touches logs/phases/history — only the countdown's own date.
   var expEl=document.getElementById('cdExpired');
   if(expEl){
     if(diff<=0){
@@ -1635,13 +1526,7 @@ function rQuote(){var q=QUOTES[quoteIdx%QUOTES.length];var el=document.getElemen
 function nextQuote(){quoteIdx++;rQuote();}
 
 // ============================================================
-// FOCUS SESSION — a Forest-app-style focus timer. A tree grows while you
-// stay on this tab; switch away (or close the tab, or the browser dies)
-// mid-session and the tree dies, same loss-aversion mechanic Forest uses.
-// A completed session is stored in your "forest" as its own measurement —
-// it does not touch Log Entry automatically, but offers a one-click way to
-// also log it as real study time if you want, same pattern as everywhere
-// else in this app (checklist, syllabus topics).
+// FOCUS SESSION
 // ============================================================
 function refreshFocusSubjectSelect(){
   var sel=document.getElementById('focusSubject');if(!sel)return;
@@ -1662,7 +1547,7 @@ async function startFocusSession(){
   if(!minutes||minutes<=0){toast('Enter a valid duration');return;}
   var subj=document.getElementById('focusSubject').value;
   focusSession={startTime:Date.now(), durationMin:minutes, subject:subj};
-  await ss(KACTIVESESSION, focusSession); // persisted immediately so an unclean exit is detectable next load
+  await ss(KACTIVESESSION, focusSession);
   document.getElementById('focusIdle').style.display='none';
   document.getElementById('focusActive').style.display='block';
   document.getElementById('focusSubjLabel').textContent=subj?('Focusing on: '+subj):'Focus session in progress — stay on this tab';
@@ -1741,9 +1626,6 @@ function renderForestStrip(){
     el.appendChild(span);
   });
 }
-// Wipes all focus-session history (e.g. to clear out test sessions before
-// starting for real). Only touches the forest — never your logs, syllabus,
-// or anything else.
 function resetForest(){
   customConfirm('Clear all Focus Session history? This removes every tree (completed and died) permanently — your logs, syllabus, and everything else are untouched.',function(){
     forest=[];
@@ -1751,8 +1633,6 @@ function resetForest(){
     toast('Forest reset — start fresh whenever you\'re ready');
   });
 }
-// Leaving the tab/app mid-session kills the tree — the whole point of the
-// mechanic. This fires on tab switches, minimizing, and switching apps.
 document.addEventListener('visibilitychange', function(){
   if(document.hidden && focusSession){
     failFocusSession('left the tab');
@@ -1774,7 +1654,7 @@ function rPerf(){
   var cp=document.getElementById('consPct');if(cp)cp.textContent=cons+'% (30d)';
   var sl=logs.filter(function(l){return l.score;});
   var avsPct=sl.length?Math.round(sl.reduce(function(s,l){return s+(+l.score/(+l.scoreOf||10)*100);},0)/sl.length):null;
-  var avs=avsPct; // percentage now, since "out of" can vary per entry
+  var avs=avsPct;
   document.getElementById('perfStats').innerHTML=
     '<div class="stat"><div class="slbl">Total Hours</div><div class="sval">'+th.toFixed(0)+'</div><div class="ssub">avg '+(logs.length?(th/logs.length).toFixed(1):0)+'h/day</div></div>'+
     '<div class="stat"><div class="slbl">Answers</div><div class="sval">'+ta+'</div><div class="ssub">'+Math.round(ta/600*100)+'% to 600 target</div><div class="spbar"><div class="spbar-f" style="width:'+Math.min(100,ta/600*100)+'%"></div></div></div>'+
@@ -1884,8 +1764,6 @@ function saveLog(){
   if(!selSubj.length){toast('Select at least one subject!');return;}
 
   if(editingId!==null){
-    // UPDATE existing — topic linkage from the original entry is kept as-is.
-    // Editing hours/notes shouldn't re-trigger the revision schedule again.
     var idx=logs.findIndex(function(l){return l.id===editingId;});
     if(idx>=0){
       var old=logs[idx];
@@ -1895,8 +1773,6 @@ function saveLog(){
     }
     cancelEdit();
   } else {
-    // NEW entry — if a syllabus topic was linked, this is what actually
-    // starts or advances that topic's spaced-repetition revision schedule.
     var topicInfo=topicVal?applyTopicStudyFromLog(topicVal,d):null;
     logs.push({date:d,phase:p,subjects:selSubj.slice(),hours:h,answers:a,score:sc2,scoreOf:scOf,essays:e,cases:c,notes:n,id:Date.now(),
       topicPaper:topicInfo?topicInfo.paper:null,topicId:topicInfo?topicInfo.id:null,topicName:topicInfo?topicInfo.name:null});
@@ -1924,14 +1800,11 @@ function _resetLogForm(){
   var ts=document.getElementById('lgTopic');if(ts)ts.value='';
 }
 
-// Load an existing entry into the form for editing
 function editLog(id){
   var l=logs.find(function(l){return l.id===id;});
   if(!l)return;
   editingId=id;
-  // Switch to Log tab
   showTab('log', document.querySelector('.nb:nth-child(3)'));
-  // Fill form
   document.getElementById('lgDate').value=l.date;
   document.getElementById('lgPhase').value=l.phase||('Phase '+phase);
   document.getElementById('lgHrs').value=l.hours||'5';
@@ -1941,33 +1814,28 @@ function editLog(id){
   document.getElementById('lgEss').value=l.essays||0;
   document.getElementById('lgCas').value=l.cases||0;
   document.getElementById('lgNotes').value=l.notes||'';
-  // Show which topic this entry was originally linked to, read-only in
-  // effect (editing doesn't re-trigger the revision schedule — see saveLog)
   var ts=document.getElementById('lgTopic');
   if(ts){
     if(l.topicPaper&&l.topicId){
       refreshTopicSelect();
       ts.value=l.topicPaper+'|||'+l.topicId;
-      if(ts.value!==l.topicPaper+'|||'+l.topicId)ts.value=''; // topic may have been deleted since
+      if(ts.value!==l.topicPaper+'|||'+l.topicId)ts.value='';
     } else {
       ts.value='';
     }
   }
-  // Set subject chips
   selSubj=(l.subjects||[]).slice();
   document.querySelectorAll('#subjChips .chip').forEach(function(c){
     var s=c.getAttribute('onclick').match(/'([^']+)'/);
     if(s&&selSubj.indexOf(s[1])>=0)c.classList.add('on');
     else c.classList.remove('on');
   });
-  // Update UI to edit mode
   document.getElementById('lgEditBanner').style.display='inline-block';
   document.getElementById('lgSaveBtn').textContent='✓ Update Entry';
   document.getElementById('lgSaveBtn').style.background='rgba(74,144,217,.15)';
   document.getElementById('lgSaveBtn').style.borderColor='var(--bbd)';
   document.getElementById('lgSaveBtn').style.color='var(--blue)';
   document.getElementById('lgCancelBtn').style.display='inline-block';
-  // Scroll form into view
   document.getElementById('tab-log').scrollIntoView({behavior:'smooth',block:'start'});
   toast('Editing entry for '+fD(l.date));
 }
@@ -2096,20 +1964,14 @@ function rPhases(){
   refreshPhaseSelects();
 }
 
-// Every part of the app that references a phase (Log Entry, Mock Scores,
-// Error Log, History filter, Active Phase picker) pulls its options from
-// PHS live, so adding/renaming/reordering/deleting a phase here updates
-// everywhere else automatically — nothing to keep in sync by hand.
 function refreshPhaseSelects(){
   var shortName=function(p){return (p.n||'').replace(/^Phase\s*\d+\s*-\s*/i,'');};
-  // Numeric-value select (Active Phase picker)
   var ap=document.getElementById('actPhase');
   if(ap){
     var curApVal=phase;
     ap.innerHTML=PHS.map(function(p,i){return '<option value="'+i+'">Phase '+i+' - '+esc(shortName(p))+'</option>';}).join('');
     ap.value=Math.max(0,Math.min(curApVal,PHS.length-1));
   }
-  // Text-value selects used to tag log entries, mocks, errors ("Phase 0" etc.)
   ['lgPhase','mkPhase','errPhase'].forEach(function(id){
     var el=document.getElementById(id);if(!el)return;
     var cur=el.value;
@@ -2117,7 +1979,6 @@ function refreshPhaseSelects(){
     var opts=Array.prototype.map.call(el.options,function(o){return o.value;});
     el.value=opts.indexOf(cur)>=0?cur:('Phase '+Math.max(0,Math.min(phase,PHS.length-1)));
   });
-  // History filter select (keeps "All Phases" as first option)
   var fp=document.getElementById('fPhase');
   if(fp){
     var curFp=fp.value;
@@ -2137,7 +1998,6 @@ function movePhase(i,dir){
   var j=i+dir;
   if(j<0||j>=PHS.length)return;
   var t=PHS[i];PHS[i]=PHS[j];PHS[j]=t;
-  // Keep the "active phase" pointer following the phase it was set to, not the slot
   if(phase===i)phase=j; else if(phase===j)phase=i;
   saveAll();rPhases();
 }
@@ -2155,12 +2015,7 @@ function addCkItem(){CK.push({id:'ck_'+Date.now(),label:'New task',time:'00:00',
 function resetCk(){customConfirm('Reset checklist to default?', function(){CK=CK_DEF.map(function(i){return{id:i.id,label:i.label,time:i.time};});saveAll();rPhases();rCk();toast('Reset');});}
 
 // ============================================================
-// SYLLABUS COVERAGE — the thing that actually predicts your score.
-// Status: pending -> reading -> covered (one-way). Once covered, a
-// spaced-repetition schedule kicks in automatically: +1, +4, +7, +15,
-// +30, +60, +90 days from the day it was first covered. Whichever
-// revision is due today (or overdue) shows up in red, both here and
-// as a Dashboard widget, so you always know exactly what to revise.
+// SYLLABUS COVERAGE
 // ============================================================
 var SYL_STATUSES=['pending','reading','covered'];
 var SYL_META={
@@ -2169,8 +2024,6 @@ var SYL_META={
   covered:{label:'Covered',color:'var(--gold2)',bg:'var(--gdim)'}
 };
 function addDaysStr(dateStr,n){var d=new Date(dateStr);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
-// Returns null if not yet covered, else {revisionsDone, dueDate, daysUntil, state}
-// state: 'mastered' (all 7 revisions done) | 'due' (overdue/today) | 'soon' (<=3 days) | 'scheduled'
 function topicDueInfo(t){
   if(t.status!=='covered'||!t.firstDoneDate)return null;
   var revisionsDone=t.revisionsDone||0;
@@ -2186,8 +2039,6 @@ function sylStats(topics){
   var mastered=topics.filter(function(t){var d=topicDueInfo(t);return d&&d.state==='mastered';}).length;
   return {n:n,covered:covered,mastered:mastered,pct:n?Math.round(covered/n*100):0};
 }
-// Scans every paper/topic for revisions due today or overdue — used by both
-// the Syllabus tab and the Dashboard "Due Today" widget.
 function getDueRevisions(){
   var due=[];
   Object.keys(SYL).forEach(function(paper){
@@ -2196,12 +2047,9 @@ function getDueRevisions(){
       if(d&&d.state==='due')due.push({paper:paper,topic:t,due:d});
     });
   });
-  due.sort(function(a,b){return a.due.daysUntil-b.due.daysUntil;}); // most overdue first
+  due.sort(function(a,b){return a.due.daysUntil-b.due.daysUntil;});
   return due;
 }
-// Anything covered whose revision falls within the next 3 days — lets you
-// see the queue moving even when nothing is overdue yet, and you can revise
-// a topic a little early if it's convenient.
 function getSoonRevisions(){
   var soon=[];
   Object.keys(SYL).forEach(function(paper){
@@ -2213,8 +2061,6 @@ function getSoonRevisions(){
   soon.sort(function(a,b){return a.due.daysUntil-b.due.daysUntil;});
   return soon;
 }
-// Furthest-out preview (used only when nothing is due/soon, so the widget
-// never looks empty/broken right after you've just covered something).
 function getUpcomingPreview(n){
   var up=[];
   Object.keys(SYL).forEach(function(paper){
@@ -2239,10 +2085,6 @@ function rSyllabus(){
     '<div class="stat"><div class="slbl">Papers Tracked</div><div class="sval">'+papers.length+'</div><div class="ssub">'+totalTopics+' total topics</div></div>'+
     '<div class="stat"><div class="slbl">Fully Mastered (7/7 revisions)</div><div class="sval" style="color:var(--green)">'+totalMastered+'</div><div class="ssub">topics revised 7 times</div></div>';
 
-  // Due-today list, right at the top of the tab — falls back to "due soon"
-  // then a plain upcoming preview so the box never looks empty/broken right
-  // after you've just covered something (its first revision is tomorrow,
-  // not today, so this always shows the queue moving).
   var dueEl=document.getElementById('sylDueList');
   if(dueEl){
     dueEl.innerHTML='';
@@ -2318,7 +2160,6 @@ function rSyllabus(){
         restartBtn.addEventListener('click',(function(p,id){return function(){resetSylTopic(p,id);};})(paper,t.id));
         r.appendChild(restartBtn);
       }
-      // Once covered, show the spaced-repetition progress + next due date
       var dd=topicDueInfo(t);
       if(dd){
         var srsBadge=document.createElement('span');
@@ -2379,8 +2220,6 @@ function markSylRevision(paper,id){
   saveAll();rSyllabus();rDash();
   toast(t.revisionsDone>=SRS_INTERVALS.length?(t.name+' fully mastered! 🎉'):(t.name+' — revision '+t.revisionsDone+'/'+SRS_INTERVALS.length+' logged'));
 }
-// Undoes the most recent "✓ Revised" click — for when it was tapped by
-// mistake. Moves the topic back one step in its revision schedule.
 function undoSylRevision(paper,id){
   var t=(SYL[paper]||[]).find(function(x){return x.id===id;});if(!t)return;
   if(!t.revisionsDone||t.revisionsDone<=0){toast('Nothing to undo — no revisions logged yet');return;}
@@ -2561,8 +2400,7 @@ function exportPlan(){var t=planSecs.map(function(s){return'== '+s.title+' ==\n'
 function clearPlan(){customConfirm('Clear entire plan?', function(){planSecs=[];saveAll();rPlan();toast('Cleared');});}
 
 // ============================================================
-// DOCUMENTS — PDF attach/view (IndexedDB, local to this device/browser)
-// + full backup export/import for moving data between devices
+// DOCUMENTS
 // ============================================================
 var pdfs=[];
 var KPDFL='upsc_pdfl';
@@ -2723,10 +2561,6 @@ function renderHist(){
   if(fp)f=f.filter(function(l){return l.phase===fp;});
   if(fsr)f=f.filter(function(l){return (l.notes||'').toLowerCase().indexOf(fsr.toLowerCase())>=0||(l.subjects||[]).join(' ').toLowerCase().indexOf(fsr.toLowerCase())>=0;});
   var hc=document.getElementById('histCnt');if(hc)hc.textContent=f.length+' entries'+(f.length>histShown?' (showing '+histShown+')':'');
-  // Long-term safety: after months/years of daily logging this list can grow
-  // into the thousands. Rendering all of them into the DOM at once would
-  // make the page sluggish, so only render a page at a time — filters still
-  // search the complete dataset, this only limits what's drawn on screen.
   var page=f.slice(0,histShown);
   document.getElementById('histTb').innerHTML=page.length?page.map(function(l){
     var isEd=editingId===l.id;
@@ -2749,26 +2583,20 @@ function clearAll(){customConfirm('Delete ALL data permanently?', function(){log
 // INIT — Firebase auth drives everything
 // ============================================================
 (async function(){
-  // Bind setup guide link
   var sl=document.getElementById('setupLink');
   if(sl)sl.addEventListener('click',function(e){e.preventDefault();showSetupGuide();});
 
-  // Check if Firebase config was saved previously
   var savedConfig = null;
   try { var raw=localStorage.getItem('air1_fb_config'); if(raw) savedConfig=JSON.parse(raw); } catch(e){}
 
   if (savedConfig) {
-    // Config exists — init Firebase and wait for auth state
     try {
       var user = await initFirebase(savedConfig);
       if (user) {
-        // Already signed in — go straight to app
         await onUserSignedIn(user);
         return;
       }
-      // Config good but not signed in — show login
       document.getElementById('loginOverlay').style.display='flex';
-      // Set up auth state listener for when they sign in
       var { onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
       onAuthStateChanged(window._fbAuth, async function(u){ if(u) await onUserSignedIn(u); });
     } catch(e) {
@@ -2776,7 +2604,6 @@ function clearAll(){customConfirm('Delete ALL data permanently?', function(){log
       document.getElementById('loginOverlay').style.display='flex';
     }
   } else {
-    // No config yet — show login screen
     document.getElementById('loginOverlay').style.display='flex';
   }
 })();
