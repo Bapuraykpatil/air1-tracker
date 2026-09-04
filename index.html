@@ -1507,64 +1507,69 @@ function rHm(){
   } else {
     rs=new Date(tdDt);rs.setDate(1);rs.setMonth(rs.getMonth()-(hmM-1));
   }
+  var gs=new Date(rs);var dow=gs.getDay();gs.setDate(gs.getDate()-(dow===0?6:dow-1));
   var mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var weeks=[];var cur=new Date(gs);
+  while(cur<=tdDt){var w=[];for(var i=0;i<7;i++){w.push(cur.toISOString().slice(0,10));cur.setDate(cur.getDate()+1);}weeks.push(w);}
   var rss=rs.toISOString().slice(0,10);
 
-  // Calendar-month columns: each column IS one real month, sized to that
-  // month's actual day count (28-31), always starting at day 1. A new
-  // month never shares a column with the tail end of the previous one —
-  // no more day-of-week alignment quirks or ambiguous month labeling.
-  var months=[]; // [{year, monthIdx, days:[dateStr,...]}]
-  var cur=new Date(rs.getFullYear(), rs.getMonth(), 1);
-  while(cur<=tdDt){
-    var y=cur.getFullYear(), mIdx=cur.getMonth();
-    var daysInMonth=new Date(y, mIdx+1, 0).getDate();
-    var days=[];
-    for(var d=1; d<=daysInMonth; d++){
-      days.push(new Date(y, mIdx, d).toISOString().slice(0,10));
+  // Dense GitHub-style grid: one column per week (7 rows each), not one
+  // tall column per month. Labels are still assigned by month, with two
+  // safeguards: a new month's label is skipped if it would land right on
+  // top of the previous one (short/partial months at the edge of the
+  // range), and the current month is always force-labeled at the very
+  // last column using today's actual date — not the week-start date —
+  // so "today" never gets miscategorized into the wrong month's label.
+  var ml='<div style="display:flex;gap:3px;margin-bottom:3px">';var lm=-1;var lastLabelIdx=-99;
+  var mlabels=[];
+  weeks.forEach(function(w,wi){
+    var m=parseInt(w[0].slice(5,7))-1;
+    var lbl='';
+    if(m!==lm){
+      if(wi-lastLabelIdx>=3){lbl=mn[m];lastLabelIdx=wi;}
+      lm=m;
     }
-    months.push({year:y, monthIdx:mIdx, days:days});
-    cur=new Date(y, mIdx+1, 1);
+    mlabels.push(lbl);
+  });
+  var lastMonth=parseInt(td.slice(5,7))-1;
+  if(mlabels.indexOf(mn[lastMonth])<0){
+    mlabels[mlabels.length-1]=mn[lastMonth];
   }
-  var maxDaysInView=months.reduce(function(m,mo){return Math.max(m,mo.days.length);},28);
-
-  var ml='<div style="display:flex;gap:3px;margin-bottom:3px">';
-  months.forEach(function(mo){
-    ml+='<div style="width:11px;font-family:var(--mono);font-size:8px;color:var(--t3);white-space:nowrap;overflow:visible">'+mn[mo.monthIdx]+'</div>';
+  mlabels.forEach(function(lbl){
+    ml+='<div style="width:11px;font-family:var(--mono);font-size:8px;color:var(--t3);white-space:nowrap;overflow:visible">'+lbl+'</div>';
   });
   ml+='</div>';
 
   var cells='<div style="display:flex;gap:3px">';
-  months.forEach(function(mo){
+  weeks.forEach(function(w){
     cells+='<div style="display:flex;flex-direction:column;gap:3px">';
-    for(var r=0; r<maxDaysInView; r++){
-      if(r>=mo.days.length){
-        // Pad shorter months (Feb, 30-day months) so all columns line up
-        cells+='<div class="hm-cell" style="visibility:hidden"></div>';
-        continue;
-      }
-      var ds=mo.days[r];
+    w.forEach(function(ds){
       var h=dm[ds]||0;
       var cls='hm-cell';
       var tip='';
       var bd=ds===td?' style="outline:1.5px solid var(--gold2);outline-offset:1px"':'';
 
       if(ds>td){
+        // Future day — dim neutral
         cls+=' fut';
       } else if(ds<planStart){
+        // Before journey started — neutral grey, no tooltip (not a missed day)
         cls+=' fut';
         tip='';
       } else if(ds<rss){
+        // In range but before display window start — dim
         cls+=' fut';
       } else if(h===0){
+        // In range, after plan start, no study — genuinely missed
         cls+=' miss';
         tip=ds+': missed';
       } else {
+        // Studied
         cls+=' '+(h<1.5?'l1':h<3?'l2':h<5?'l3':'l4');
         tip=ds+': '+h.toFixed(1)+'h';
       }
       cells+='<div class="'+cls+'" data-t="'+tip+'"'+bd+'></div>';
-    }
+    });
     cells+='</div>';
   });
   cells+='</div>';
