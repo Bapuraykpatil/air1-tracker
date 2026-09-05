@@ -340,6 +340,9 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div id="hmWrap" style="overflow-x:auto;padding-bottom:2px"></div>
     <div class="hm-legend"><span style="color:var(--red);font-size:8px">Missed</span><div class="hm-cell miss"></div><div class="hm-cell"></div><div class="hm-cell l1"></div><div class="hm-cell l2"></div><div class="hm-cell l3"></div><div class="hm-cell l4"></div><span style="color:var(--green);font-size:8px">Studied</span></div>
     <div id="hmStats" style="display:flex;gap:14px;margin-top:8px;flex-wrap:wrap"></div>
+    <hr>
+    <div class="ctitle" style="margin-bottom:6px">Progress Over This Period</div>
+    <div class="cw" style="height:150px"><canvas id="cHmProgress"></canvas></div>
   </div>
   <div class="card"><div class="ctitle">Recent Entries</div>
     <table class="tbl"><thead><tr><th>Date</th><th>Subjects</th><th>Hrs</th><th>Ans</th><th>Score</th><th>Essays</th><th>Cases</th><th>Notes</th><th></th></tr></thead>
@@ -1521,7 +1524,7 @@ function rHm(){
     cm++; if(cm>11){cm=0;cy++;}
   }
 
-  var blocksHtml='<div style="display:flex;gap:10px;align-items:flex-start">';
+  var blocksHtml='<div style="display:flex;gap:0;align-items:flex-start">';
   months.forEach(function(mo){
     var daysInMonth=new Date(mo.y, mo.m+1, 0).getDate();
     var firstOfMonth=new Date(mo.y, mo.m, 1);
@@ -1580,6 +1583,17 @@ function rHm(){
     '<div style="font-family:var(--mono);font-size:9px;color:var(--t3)"><span style="color:var(--gold2)">'+fh.toFixed(1)+'h</span> studied</div>'+
     '<div style="font-family:var(--mono);font-size:9px;color:var(--t3)"><span style="color:var(--gold2)">'+fa+'</span> answers</div>'+
     '<div style="font-family:var(--mono);font-size:9px;color:var(--t3)">journey started <span style="color:var(--gold2)">'+fD(planStart)+'</span></div>';
+
+  // Progress chart for the same period shown in the heatmap above:
+  // cumulative hours studied, day by day, from effectiveStart to today.
+  var cur=new Date(effectiveStart);var labels=[],cumData=[],cum=0;
+  while(cur<=tdDt){
+    var ds=cur.toISOString().slice(0,10);
+    cum+=(dm[ds]||0);
+    labels.push(fD(ds));cumData.push(+cum.toFixed(1));
+    cur.setDate(cur.getDate()+1);
+  }
+  mkC('cHmProgress','line',{labels:labels,datasets:[{data:cumData,borderColor:'#c9a84c',backgroundColor:'rgba(201,168,76,.08)',borderWidth:1.5,pointRadius:0,tension:.3,fill:true}]},{scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8}},y:{beginAtZero:true,grid:{color:'rgba(255,255,255,.03)'},title:{display:true,text:'Cumulative Hours',color:'#52504c',font:{size:8}}}}});
 }
 
 function applyPreset(){var v=document.getElementById('cdPreset').value;if(v){document.getElementById('cdDate').value=v;saveCD();}}
