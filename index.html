@@ -1509,62 +1509,57 @@ function rHm(){
   var planStart=journeyStart||today();
   var mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-  // Range start (first month shown)
+  // Range start
   var rs;
   if(hmM===0){ rs=new Date(planStart); }
-  else { rs=new Date(tdDt); rs.setMonth(rs.getMonth()-(hmM-1)); }
-  var y0=rs.getFullYear(), m0=rs.getMonth();
-  var yN=tdDt.getFullYear(), mN=tdDt.getMonth();
+  else { rs=new Date(tdDt); rs.setMonth(rs.getMonth()-(hmM-1)); rs.setDate(1); }
 
-  // Build list of {year,month} from (y0,m0) to (yN,mN) inclusive
-  var months=[];
-  var cy=y0, cm=m0;
-  while(cy<yN || (cy===yN && cm<=mN)){
-    months.push({y:cy,m:cm});
-    cm++; if(cm>11){cm=0;cy++;}
+  // Grid start: Monday on/before rs, so weeks are always full 7-day columns
+  var gs=new Date(rs);var dow=gs.getDay();gs.setDate(gs.getDate()-(dow===0?6:dow-1));
+
+  // Build continuous list of week-columns (7 real dates each) from gs to today
+  var weeks=[];var cur=new Date(gs);
+  while(cur<=tdDt){
+    var w=[];
+    for(var i=0;i<7;i++){ w.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
+    weeks.push(w);
   }
 
-  var blocksHtml='<div style="display:flex;gap:0;align-items:flex-start">';
-  months.forEach(function(mo){
-    var daysInMonth=new Date(mo.y, mo.m+1, 0).getDate();
-    var firstOfMonth=new Date(mo.y, mo.m, 1);
-    var firstDow=firstOfMonth.getDay(); // 0=Sun..6=Sat
-    var leadBlank=(firstDow===0?6:firstDow-1); // Mon-start offset
-
-    // Build day cells: leading blanks + each real day of month + trailing blanks to complete last week
-    var cellsArr=[];
-    for(var b=0;b<leadBlank;b++)cellsArr.push(null);
-    for(var d=1;d<=daysInMonth;d++)cellsArr.push(d);
-    while(cellsArr.length%7!==0)cellsArr.push(null);
-
-    // Group into week-columns (7 rows each)
-    var weeks=[];
-    for(var i=0;i<cellsArr.length;i+=7)weeks.push(cellsArr.slice(i,i+7));
-
-    var block='<div style="display:flex;flex-direction:column;gap:3px">';
-    block+='<div style="font-family:var(--mono);font-size:8px;color:var(--t3);white-space:nowrap">'+mn[mo.m]+' '+mo.y+'</div>';
-    block+='<div style="display:flex;gap:3px">';
-    weeks.forEach(function(w){
-      block+='<div style="display:flex;flex-direction:column;gap:3px">';
-      w.forEach(function(dayNum){
-        if(dayNum===null){ block+='<div class="hm-cell blank"></div>'; return; }
-        var ds=mo.y+'-'+String(mo.m+1).padStart(2,'0')+'-'+String(dayNum).padStart(2,'0');
-        var h=dm[ds]||0;
-        var cls='hm-cell', tip='';
-        var bd=ds===td?' style="outline:1.5px solid var(--gold2);outline-offset:1px"':'';
-        if(ds>td){ cls+=' fut'; }
-        else if(ds<planStart){ cls+=' fut'; }
-        else if(h===0){ cls+=' miss'; tip=ds+': missed'; }
-        else { cls+=' '+(h<1.5?'l1':h<3?'l2':h<5?'l3':'l4'); tip=ds+': '+h.toFixed(1)+'h'; }
-        block+='<div class="'+cls+'" data-t="'+tip+'"'+bd+'></div>';
-      });
-      block+='</div>';
-    });
-    block+='</div></div>';
-    blocksHtml+=block;
+  // Month label: place under the first week-column whose Monday falls in
+  // that month (so each month's label appears exactly where it starts),
+  // and always force the current month's label onto the final column so
+  // "today" is never left unlabeled.
+  var labels=weeks.map(function(w){
+    var mo=parseInt(w[0].slice(5,7),10)-1;
+    var day=parseInt(w[0].slice(8,10),10);
+    return (day<=7)?mn[mo]:'';
   });
-  blocksHtml+='</div>';
-  wrap.innerHTML=blocksHtml;
+  var lastMonth=parseInt(td.slice(5,7),10)-1;
+  if(labels.indexOf(mn[lastMonth])<0)labels[labels.length-1]=mn[lastMonth];
+
+  var ml='<div style="display:flex;gap:3px;margin-bottom:3px">';
+  labels.forEach(function(lbl){ ml+='<div style="width:11px;font-family:var(--mono);font-size:8px;color:var(--t3);white-space:nowrap;overflow:visible">'+lbl+'</div>'; });
+  ml+='</div>';
+
+  var rss=gs.toISOString().slice(0,10);
+  var cells='<div style="display:flex;gap:3px">';
+  weeks.forEach(function(w){
+    cells+='<div style="display:flex;flex-direction:column;gap:3px">';
+    w.forEach(function(ds){
+      var h=dm[ds]||0;
+      var cls='hm-cell', tip='';
+      var bd=ds===td?' style="outline:1.5px solid var(--gold2);outline-offset:1px"':'';
+      if(ds>td){ cls+=' fut'; }
+      else if(ds<planStart){ cls+=' fut'; }
+      else if(ds<rss){ cls+=' fut'; }
+      else if(h===0){ cls+=' miss'; tip=ds+': missed'; }
+      else { cls+=' '+(h<1.5?'l1':h<3?'l2':h<5?'l3':'l4'); tip=ds+': '+h.toFixed(1)+'h'; }
+      cells+='<div class="'+cls+'" data-t="'+tip+'"'+bd+'></div>';
+    });
+    cells+='</div>';
+  });
+  cells+='</div>';
+  wrap.innerHTML=ml+cells;
 
   // Stats: count days from planStart (or range start, whichever later) to today
   var effectiveStart=planStart>rs.toISOString().slice(0,10)?planStart:rs.toISOString().slice(0,10);
