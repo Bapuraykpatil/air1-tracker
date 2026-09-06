@@ -1281,8 +1281,15 @@ function streak(){
   var dates=[].concat(logs.map(function(l){return l.date;}));
   dates=dates.filter(function(v,i,a){return a.indexOf(v)===i;}).sort().reverse();
   if(!dates.length)return 0;
+  var dateSet={};dates.forEach(function(d){dateSet[d]=true;});
   var s=0;var c=new Date(today());
-  for(var i=0;i<365;i++){if(dates.indexOf(c.toISOString().slice(0,10))>=0){s++;c.setDate(c.getDate()-1);}else break;}
+  // No artificial day cap — bounded only by how many unique days are in the
+  // log, so a genuine unbroken streak of years still counts correctly.
+  var maxIter=dates.length+1;
+  for(var i=0;i<maxIter;i++){
+    var ds=c.toISOString().slice(0,10);
+    if(dateSet[ds]){s++;c.setDate(c.getDate()-1);}else break;
+  }
   return s;
 }
 // Longest run of consecutive studied days ever logged (all-time best streak),
@@ -1513,11 +1520,11 @@ function setHm(m,btn){
   rHm();
 }
 // ------------------------------------------------------------
-// Activity Heatmap — rebuilt to be strictly MONTH-based:
-// one block per calendar month, containing exactly that month's
-// real day count (28/29/30/31), laid out Mon-Sun with leading/
-// trailing blank cells so weekdays line up under each other.
-// Blank padding cells are invisible (not counted as missed).
+// Activity Heatmap — one continuous grid of real calendar weeks
+// (Mon-Sun columns, no gaps between months). Each cell is a real
+// date; a month label is placed above the column where that month
+// begins, so the grid reads like a normal GitHub-style heatmap
+// while still marking where each new month starts.
 // ------------------------------------------------------------
 function rHm(){
   var wrap=document.getElementById('hmWrap');if(!wrap)return;
@@ -1598,14 +1605,16 @@ function rHm(){
 
   // Progress chart for the same period shown in the heatmap above:
   // cumulative hours studied, day by day, from effectiveStart to today.
-  var cur=new Date(effectiveStart);var labels=[],cumData=[],cum=0;
-  while(cur<=tdDt){
-    var ds=cur.toISOString().slice(0,10);
+  // (Uses its own loop/array names — deliberately not reusing the "cur"/
+  // "labels" vars from the grid-building code above, to avoid confusion.)
+  var progCur=new Date(effectiveStart);var progLabels=[],cumData=[],cum=0;
+  while(progCur<=tdDt){
+    var ds=progCur.toISOString().slice(0,10);
     cum+=(dm[ds]||0);
-    labels.push(fD(ds));cumData.push(+cum.toFixed(1));
-    cur.setDate(cur.getDate()+1);
+    progLabels.push(fD(ds));cumData.push(+cum.toFixed(1));
+    progCur.setDate(progCur.getDate()+1);
   }
-  mkC('cHmProgress','line',{labels:labels,datasets:[{data:cumData,borderColor:'#c9a84c',backgroundColor:'rgba(201,168,76,.08)',borderWidth:1.5,pointRadius:0,tension:.3,fill:true}]},{scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8}},y:{beginAtZero:true,grid:{color:'rgba(255,255,255,.03)'},title:{display:true,text:'Cumulative Hours',color:'#52504c',font:{size:8}}}}});
+  mkC('cHmProgress','line',{labels:progLabels,datasets:[{data:cumData,borderColor:'#c9a84c',backgroundColor:'rgba(201,168,76,.08)',borderWidth:1.5,pointRadius:0,tension:.3,fill:true}]},{scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8}},y:{beginAtZero:true,grid:{color:'rgba(255,255,255,.03)'},title:{display:true,text:'Cumulative Hours',color:'#52504c',font:{size:8}}}}});
 }
 
 function applyPreset(){var v=document.getElementById('cdPreset').value;if(v){document.getElementById('cdDate').value=v;saveCD();}}
